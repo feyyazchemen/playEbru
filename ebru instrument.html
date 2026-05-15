@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ebru Water Instrument</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080b14;color:#c8cad4;font-family:'Courier New',monospace;padding:14px;max-width:700px;margin:0 auto}
+canvas{display:block;width:100%}
+#cv{border-radius:10px;margin-bottom:6px;cursor:crosshair}
+.rl{font-size:9px;color:#555;margin:9px 0 3px;display:flex;align-items:center;gap:5px}
+.rl span{opacity:.35;font-size:8px}
+.brow{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:2px}
+.btn{background:#0f1520;border:.5px solid #252b3a;border-radius:7px;padding:5px 3px;text-align:center;cursor:pointer;transition:border-color .15s;font-family:inherit}
+.bn{font-size:11px;font-weight:600;color:#b0b4c0;margin-bottom:1px;transition:color .15s}
+.bs{font-size:8px;color:#454a5a}
+#zones{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.zc{background:#0f1520;border:.5px solid #252b3a;border-radius:7px;padding:4px 5px;text-align:center}
+.zn{font-size:9px;color:#454a5a;margin-bottom:1px}
+.zl{font-size:10px;font-weight:600;color:#b0b4c0;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zb{height:3px;background:#181e2c;border-radius:2px;overflow:hidden}
+.zf{height:100%;width:0%;border-radius:2px}
+#dbg{display:flex;gap:7px;align-items:center;margin:7px 0}
+#no{flex:1;background:#0f1520;border:.5px solid #252b3a;border-radius:7px;padding:5px 10px;font-size:11px;color:#454a5a;transition:color .5s;min-width:0;font-family:inherit}
+.vb{display:flex;gap:2px;flex-shrink:0}
+.vs{width:4px;height:12px;border-radius:2px;background:#181e2c;transition:background .08s}
+.vdr{display:flex;gap:4px;flex-shrink:0}
+.vd{width:7px;height:7px;border-radius:50%;border:.5px solid #252b3a;transition:background .1s,border-color .1s}
+.zh{display:flex;align-items:center;justify-content:space-between;margin:7px 0 3px}
+.zh span{font-size:9px;color:#555}
+#ntog{font-size:9px;padding:2px 9px;background:#0f1520;border:.5px solid #333;border-radius:6px;cursor:pointer;font-family:inherit;color:#666}
+#ntog.on{color:#c8cad4;border-color:#666}
+/* Controls */
+#ctrls{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:7px}
+.cg{background:#0f1520;border:.5px solid #252b3a;border-radius:7px;padding:6px 9px}
+.cl{font-size:10px;color:#454a5a;display:flex;justify-content:space-between;margin-bottom:1px}
+.cl b{color:#c8cad4;font-weight:600}
+.cd{font-size:8px;color:#2e3650;margin-bottom:3px;line-height:1.4}  /* definition line */
+input[type=range]{width:100%;accent-color:#a78bfa}
+@media(max-width:420px){#ctrls{grid-template-columns:1fr 1fr}#cam-sliders{grid-template-columns:1fr}.brow{gap:3px}.btn{padding:6px 2px}.bn{font-size:10px}}
+/* Camera panel */
+#cpan{margin-bottom:4px}
+#cam-bar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:5px}
+#cbtn{background:#0f1520;border:.5px solid #3dd6b5;border-radius:7px;padding:5px 14px;cursor:pointer;font-family:inherit;font-size:11px;color:#3dd6b5;transition:all .15s;white-space:nowrap}
+#cbtn.live{border-color:#f06292;color:#f06292}
+#csel{background:#0f1520;border:.5px solid #252b3a;border-radius:7px;padding:4px 8px;font-family:inherit;font-size:10px;color:#b0b4c0;display:none;flex:1;min-width:0}
+#cflip-lbl{font-size:10px;color:#555;display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none;white-space:nowrap}
+#cdbg{font-size:9px;color:#454a5a;margin-left:auto;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+#cview{display:none;width:100%;border-radius:7px;margin-bottom:5px;cursor:default}
+#cam-sliders{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px}
+/* Trigger mode toggle */
+#tmode{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:5px}
+#tmode span{font-size:9px;color:#555}
+.modebtn{font-size:9px;padding:3px 10px;background:#0f1520;border:.5px solid #252b3a;border-radius:6px;cursor:pointer;font-family:inherit;color:#666;transition:all .12s}
+.modebtn.active{border-color:#3dd6b5;color:#3dd6b5}
+#tmode-def{font-size:8px;color:#2e3650;margin-top:2px;line-height:1.5}
+/* Technical reference */
+#ref{margin-top:16px}
+#ref summary{font-size:10px;color:#454a5a;cursor:pointer;padding:6px 0;user-select:none}
+#ref summary:hover{color:#777}
+#ref[open] summary{color:#c8cad4}
+#refbody{margin-top:8px}
+.ref-section{margin-bottom:14px}
+.ref-section h3{font-size:9px;color:#3dd6b5;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;border-bottom:.5px solid #1a2030;padding-bottom:3px}
+.ref-term{margin-bottom:8px}
+.ref-term dt{font-size:10px;font-weight:600;color:#b0b4c0;margin-bottom:2px}
+.ref-term dd{font-size:9px;color:#555;line-height:1.6;padding-left:8px}
+</style>
+</head>
+<body>
+
+<canvas id="cv" role="img" aria-label="Ebru tray — paint drops appear here when notes trigger"></canvas>
+
+<!-- ══ CAMERA ══ -->
+<div class="rl">camera input <span id="cstat">· click Start to activate</span></div>
+<div id="cpan">
+  <div id="cam-bar">
+    <button id="cbtn">▶ Start Camera</button>
+    <select id="csel"></select>
+    <label id="cflip-lbl"><input type="checkbox" id="cflip"> flip H</label>
+    <span id="cdbg">—</span>
+  </div>
+  <canvas id="cview" width="320" height="180" role="img" aria-label="Camera motion detection view"></canvas>
+  <div id="cam-sliders">
+    <div class="cg">
+      <div class="cl">px threshold <b id="ptv">0.15</b></div>
+      <div class="cd">min pixel brightness change to count as motion</div>
+      <input type="range" id="ptc" min="0" max=".5" step=".01" value=".15">
+    </div>
+    <div class="cg">
+      <div class="cl">slope trigger <b id="stv">0.040</b></div>
+      <div class="cd">how fast motion must arrive — filters slow diffusion</div>
+      <input type="range" id="stc" min=".005" max=".25" step=".005" value=".04">
+    </div>
+  </div>
+
+  <!-- Trigger mode: single note vs chord (for brush use) -->
+  <div id="tmode">
+    <span>trigger mode:</span>
+    <button class="modebtn active" id="singlebtn">single note</button>
+    <button class="modebtn" id="chordbtn">chord</button>
+  </div>
+  <div id="tmode-def">
+    <b style="color:#555">single</b> — one zone fires per impact (good for individual drops).
+    <b style="color:#555">chord</b> — all zones that spike simultaneously fire together (good for brush sprays across multiple zones).
+  </div>
+</div>
+
+<!-- ══ INSTRUMENTS ══ -->
+<div class="rl">acoustic instruments</div>
+<div class="brow" id="ac-i">
+  <button class="btn" data-k="kalimba" style="border-color:#3dd6b5"
+    title="African thumb piano — metal tines of varying lengths, struck downward with the thumbs. Short decay. Warm, forgiving polyphony — overlapping notes blend naturally.">
+    <div class="bn" style="color:#3dd6b5">kalimba</div><div class="bs">warm tines</div></button>
+  <button class="btn" data-k="handpan"
+    title="Dome-shaped steel percussion instrument — played by hand, produces a rich fundamental with stacked harmonics. Invented in Switzerland in 2000, inspired by Indian and Caribbean instruments.">
+    <div class="bn">handpan</div><div class="bs">steel dome</div></button>
+  <button class="btn" data-k="marimba"
+    title="Wooden xylophone — bars struck with mallets. A triangle oscillator gives it a hollow, woody character. Short decay; the 4th harmonic (×4) adds the characteristic click of the mallet strike.">
+    <div class="bn">marimba</div><div class="bs">wooden bars</div></button>
+  <button class="btn" data-k="crystal"
+    title="Glass bowl or crystal resonance — uses inharmonic bell partials at ×2.756 and ×5.404 of the fundamental. These are not integer multiples, so the tone shimmers rather than reinforcing cleanly. Long 4.5s decay.">
+    <div class="bn">crystal</div><div class="bs">bright bell</div></button>
+  <button class="btn" data-k="oud"
+    title="Middle Eastern lute — sawtooth wave (rich in harmonics) run through a filter that sweeps from bright to dark in 220ms, simulating the pluck. A quiet sub-octave drone adds the sympathetic string resonance of a real oud.">
+    <div class="bn">oud</div><div class="bs">plucked</div></button>
+</div>
+<div class="rl">synth instruments <span>· psychedelic rainbow mode activates automatically</span></div>
+<div class="brow" id="sy-i">
+  <button class="btn" data-k="fm"
+    title="FM (Frequency Modulation) synthesis — a modulator oscillator warps the pitch of a carrier oscillator. High modulation index at attack → complex metallic timbre. Decaying index → pure tone. Ratio ×3.5 creates inharmonic bell partials.">
+    <div class="bn">FM bell</div><div class="bs">metallic</div></button>
+  <button class="btn" data-k="glass"
+    title="Sine wave with a slow attack (380ms rise time) and vibrato that fades in over 500ms — simulates the sound of rubbing a wet finger around the rim of a crystal glass. Very long 4.2s decay.">
+    <div class="bn">glass</div><div class="bs">slow attack</div></button>
+  <button class="btn" data-k="pad"
+    title="Three sine waves tuned at ×1.000, ×1.0025, ×0.9978 — the tiny pitch differences cause the waves to slowly drift in and out of phase with each other (beating), creating natural width and movement. Slow 280ms attack.">
+    <div class="bn">pad</div><div class="bs">ambient</div></button>
+  <button class="btn" data-k="sitar"
+    title="Indian plucked string — sawtooth wave (buzzy, rich in harmonics) filtered through a bandpass filter centered at ×2.2 of the fundamental. A triangle-wave drone at half pitch simulates the sympathetic strings that give sitar its characteristic hum.">
+    <div class="bn">sitar</div><div class="bs">sympathetic</div></button>
+  <button class="btn" data-k="theremin"
+    title="Mimics the theremin — a sine wave with vibrato (pitch wobble) that grows in over 200ms, as a real theremin player's hand naturally shakes. The instrument was invented in 1920 by Léon Theremin and is played by moving hands near two antennae without touching them.">
+    <div class="bn">theremin</div><div class="bs">vibrato</div></button>
+</div>
+
+<!-- ══ SCALES ══ -->
+<div class="rl">pentatonic &amp; modal</div>
+<div class="brow">
+  <button class="btn scalebtn" data-k="mnp" style="border-color:#3dd6b5"
+    title="A minor pentatonic: A C D E G (two octaves). Pentatonic = 5 notes. No semitone clashes exist anywhere in this scale, so any two random notes will always sound consonant. Used in blues, folk, and traditional music worldwide."
+    ><div class="bn" style="color:#3dd6b5">minor penta</div><div class="bs">A · dark</div></button>
+  <button class="btn scalebtn" data-k="mjp"
+    title="C major pentatonic: C D E G A. The 5 notes of the C major scale with F and B removed — those two notes cause tension when played together. Result: consistently bright, open, universally pleasant."
+    ><div class="bn">major penta</div><div class="bs">C · bright</div></button>
+  <button class="btn scalebtn" data-k="hir"
+    title="Hirajoshi: A B C E F. Traditional Japanese koto scale. The minor 2nd (B to C) and the gap to E create a distinctive tranquil, introspective quality. Used in traditional Japanese court music."
+    ><div class="bn">hirajoshi</div><div class="bs">Japanese</div></button>
+  <button class="btn scalebtn" data-k="blu"
+    title="Blues scale: E G A Bb B D. The Bb is the 'blue note' — a deliberately flattened 5th that creates the characteristic tension and expressiveness of blues music. The B natural and Bb coexist, creating ambiguity."
+    ><div class="bn">blues</div><div class="bs">E · gritty</div></button>
+  <button class="btn scalebtn" data-k="wht"
+    title="Whole tone scale: C D E F# Ab Bb. Every interval is exactly a whole step (200 cents). The scale has no leading tones, so it never 'wants' to resolve anywhere. This tonally weightless quality was used extensively by Debussy."
+    ><div class="bn">whole tone</div><div class="bs">C · dreamy</div></button>
+</div>
+<div class="rl">exotic &amp; psychedelic</div>
+<div class="brow">
+  <button class="btn scalebtn" data-k="lyd"
+    title="Lydian mode: C D E F# G A B. The major scale with a raised 4th (F# instead of F). The tritone between the root C and the raised 4th F# creates a floating, unresolved quality. Used constantly in sci-fi film scores — think John Williams, Hans Zimmer."
+    ><div class="bn">lydian</div><div class="bs">raised 4th</div></button>
+  <button class="btn scalebtn" data-k="phr"
+    title="Phrygian Dominant: C Db E F G Ab Bb. The flat 2nd (Db) creates immediate tension from the root. This is mode V of the harmonic minor scale. Characteristic of flamenco music and Middle Eastern traditions."
+    ><div class="bn">phrygian dom</div><div class="bs">flat 2 · nat 3</div></button>
+  <button class="btn scalebtn" data-k="pro"
+    title="Prometheus (Mystic chord): C D E F# A Bb. Composed by Alexander Scriabin from stacked fourths and tritones. Contains no conventional dominant-tonic resolution — it loops endlessly, creating a permanently suspended, otherworldly feeling."
+    ><div class="bn">prometheus</div><div class="bs">Scriabin</div></button>
+  <button class="btn scalebtn" data-k="hun"
+    title="Hungarian Minor (Double Harmonic Minor): C D Eb F# G Ab B. Contains two augmented 2nds (Eb→F# and Ab→B), each a gap of 3 semitones. This creates a distinctive 'exotic' sound associated with Eastern European and Roma music traditions."
+    ><div class="bn">hungarian</div><div class="bs">double harm.</div></button>
+  <button class="btn scalebtn" data-k="oct"
+    title="Octatonic / Diminished scale: C Db Eb E F# G A Bb. Eight notes per octave, alternating half-steps and whole-steps. Fully symmetric — the same pattern repeats from any of its four diminished 7th chord tones. Used heavily by Stravinsky and jazz composers for its unsettling instability."
+    ><div class="bn">octatonic</div><div class="bs">symmetric</div></button>
+</div>
+<div class="rl">makam <span>· 53-TET microtonal Hz — true intervals, not equal temperament</span></div>
+<div class="brow">
+  <button class="btn scalebtn" data-k="rst"
+    title="Rast: the most fundamental Ottoman/Turkish makam. Segah (326 Hz) is the neutral 3rd — between the Western Eb (311 Hz) and E (330 Hz). This note does not exist on a piano. Eviç (462 Hz) is the neutral 7th. Literally means 'right' or 'straight' in Persian."
+    ><div class="bn">rast</div><div class="bs">neutral 3rd</div></button>
+  <button class="btn scalebtn" data-k="hcz"
+    title="Hicaz: named for the Hejaz region of Arabia. The augmented 2nd between Kür (Eb, 311 Hz) and Hic (F#, 370 Hz) — a gap of 3 semitones within 4 consecutive scale degrees — gives it its immediately recognizable Middle Eastern character."
+    ><div class="bn">hicaz</div><div class="bs">aug 2nd</div></button>
+  <button class="btn scalebtn" data-k="uss"
+    title="Uşşak: means 'lovers' in Ottoman Turkish. Büselik (240 Hz) is the characteristic 2nd degree — between the Western Bb (233 Hz) and B (247 Hz), approximately 150 cents above A. This microtonal 2nd gives Uşşak its melancholic, yearning quality."
+    ><div class="bn">uşşak</div><div class="bs">low 2nd</div></button>
+  <button class="btn scalebtn" data-k="sab"
+    title="Saba: means 'morning breeze' in Arabic. The Nim Zirgüle (366 Hz) is a slightly flattened F# — a diminished 4th above the root D. This interval creates the distinctive sorrowful, introspective quality that defines Saba."
+    ><div class="bn">saba</div><div class="bs">dim 4th</div></button>
+  <button class="btn scalebtn" data-k="nkr"
+    title="Nikriz: a compound makam combining elements of Rast and Hicaz. The augmented 2nd falls between the 3rd and 4th degrees (Mib→Hic / Eb→F#), a different position than in Hicaz, creating a distinct dramatic quality."
+    ><div class="bn">nikriz</div><div class="bs">aug on III</div></button>
+</div>
+
+<!-- ══ ZONES ══ -->
+<div class="zh"><span>zones</span><button id="ntog">ABC</button></div>
+<div id="zones">
+  <div class="zc"><div class="zn">zone 1</div><div class="zl" id="zl0">A · C</div><div class="zb"><div class="zf" id="zf0" style="background:#4fc3f7"></div></div></div>
+  <div class="zc"><div class="zn">zone 2</div><div class="zl" id="zl1">D · E</div><div class="zb"><div class="zf" id="zf1" style="background:#81c784"></div></div></div>
+  <div class="zc"><div class="zn">zone 3</div><div class="zl" id="zl2">G · A</div><div class="zb"><div class="zf" id="zf2" style="background:#fff176"></div></div></div>
+  <div class="zc"><div class="zn">zone 4</div><div class="zl" id="zl3">C · D</div><div class="zb"><div class="zf" id="zf3" style="background:#ffb74d"></div></div></div>
+  <div class="zc"><div class="zn">zone 5</div><div class="zl" id="zl4">E · G</div><div class="zb"><div class="zf" id="zf4" style="background:#f06292"></div></div></div>
+</div>
+
+<!-- ══ DEBUG ROW ══ -->
+<div id="dbg">
+  <div id="trig" style="width:9px;height:9px;border-radius:50%;background:#252b3a;flex-shrink:0;transition:background .05s"></div>
+  <div id="no">— drop paint to begin —</div>
+  <div class="vb"><div class="vs" id="vs0"></div><div class="vs" id="vs1"></div><div class="vs" id="vs2"></div><div class="vs" id="vs3"></div><div class="vs" id="vs4"></div></div>
+  <div class="vdr"><div class="vd" id="v0"></div><div class="vd" id="v1"></div><div class="vd" id="v2"></div><div class="vd" id="v3"></div></div>
+</div>
+
+<!-- ══ CONTROLS with inline definitions ══ -->
+<div id="ctrls">
+  <div class="cg">
+    <div class="cl">reverb <b id="rvv">0.00</b></div>
+    <div class="cd">simulated room echo — sound bouncing off virtual walls</div>
+    <input type="range" id="rvc" min="0" max="1" step=".05" value="0">
+  </div>
+  <div class="cg">
+    <div class="cl">delay <b id="dlv">0.00</b></div>
+    <div class="cd">repeating echo — note replays at 300ms with 38% feedback</div>
+    <input type="range" id="dlc" min="0" max=".75" step=".05" value="0">
+  </div>
+  <div class="cg">
+    <div class="cl">chorus <b id="chv">0.00</b></div>
+    <div class="cd">detuned copies — LFO-modulated delays thicken the sound</div>
+    <input type="range" id="chc" min="0" max="1" step=".05" value="0">
+  </div>
+  <div class="cg">
+    <div class="cl">debounce <b id="dbv">180ms</b></div>
+    <div class="cd">cooldown — ignores all triggers for N ms after each note</div>
+    <input type="range" id="dbc" min="60" max="500" step="10" value="180">
+  </div>
+</div>
+<div class="cg" style="margin-top:5px">
+  <div class="cl">volume <b id="vlv">0.80</b></div>
+  <div class="cd">master output gain — scales all voices equally</div>
+  <input type="range" id="vlc" min="0" max="1" step=".05" value=".8">
+</div>
+
+<!-- ══ TECHNICAL REFERENCE ══ -->
+<details id="ref">
+  <summary>▶ technical reference — expand for term explanations</summary>
+  <div id="refbody">
+
+    <div class="ref-section">
+      <h3>signal processing pipeline</h3>
+      <div class="ref-term"><dt>frame differencing</dt>
+        <dd>Comparing two consecutive camera frames pixel-by-pixel. Where the image has changed (paint landed on water), the difference is bright. Where nothing moved, it's black. The output is a greyscale motion map updated at 30fps.</dd></div>
+      <div class="ref-term"><dt>pixel threshold</dt>
+        <dd>The minimum brightness change a pixel must show to be counted as "motion." Setting this too low picks up camera noise and minor lighting fluctuations. Setting it too high misses faint drops. Calibrate it so the motion map is entirely black with no paint in the tray.</dd></div>
+      <div class="ref-term"><dt>zone analysis</dt>
+        <dd>The motion frame is divided into 5 equal vertical strips corresponding to pitch registers (left = low, right = high). Each zone's "motion level" is the proportion of its pixels that exceeded the pixel threshold, expressed as 0–1.</dd></div>
+      <div class="ref-term"><dt>exponential smoothing</dt>
+        <dd>A running average where recent values count more than older ones: smooth = (previous × 0.7) + (current × 0.3). Removes single-frame noise spikes. Equivalent to TouchDesigner's Filter CHOP with a 1-frame Gaussian.</dd></div>
+      <div class="ref-term"><dt>slope detection</dt>
+        <dd>The rate of change of the smoothed zone value between frames. A paint drop impact creates a steep spike (high slope). Paint slowly spreading after impact creates a shallow, gradual rise (low slope). Only steep slopes — impacts — trigger notes. This is the primary mechanism distinguishing drops from diffusion.</dd></div>
+      <div class="ref-term"><dt>debounce</dt>
+        <dd>A mandatory silence window enforced after each trigger fires. Without it, one paint drop could trigger several notes: once on impact, again as the ripple spreads, again as the ring expands. Default 180ms collapses the entire ripple event into a single note.</dd></div>
+      <div class="ref-term"><dt>chord mode (brush behaviour)</dt>
+        <dd>A horsehair Ebru brush deposits 10–50 tiny droplets across a wide area simultaneously. In single-note mode this collapses to one note (whichever zone peaked highest). In chord mode, all zones that simultaneously cross the slope threshold fire notes together — a brush sweep across three zones produces a three-note chord. The 4-voice polyphony cap limits the maximum chord to 4 notes.</dd></div>
+      <div class="ref-term"><dt>velocity</dt>
+        <dd>How hard or fast a note is struck, mapped to volume. In manual mode: mouse cursor speed (pixels/ms) at the moment of click. In camera mode: zone intensity at trigger moment. Faster/harder impact → brighter pixel cluster → higher velocity → louder note.</dd></div>
+      <div class="ref-term"><dt>polyphony</dt>
+        <dd>The ability to play multiple notes simultaneously. Limited here to 4 simultaneous voices. When a 5th note triggers, the oldest active voice is silenced (oldest-first steal). Kalimba decay is short enough that this limit is rarely felt in practice.</dd></div>
+    </div>
+
+    <div class="ref-section">
+      <h3>audio effects</h3>
+      <div class="ref-term"><dt>reverb (reverberation)</dt>
+        <dd>Simulated room acoustics. The instrument generates a synthetic impulse response — a recording of noise decaying in an imaginary room — and mathematically convolves the audio signal with it. The result sounds as if the note were played in a physical space. Short reverb = small dry room. Long reverb = cathedral.</dd></div>
+      <div class="ref-term"><dt>convolution</dt>
+        <dd>The mathematical operation at the heart of reverb. Every sample of the dry signal is multiplied with every sample of the impulse response and summed. The impulse response encodes how the room responds to a single instantaneous sound — by convolving your audio with it, every note inherits the room's acoustic character.</dd></div>
+      <div class="ref-term"><dt>delay</dt>
+        <dd>An echo effect. The audio signal is stored and replayed after a fixed time (300ms here). The feedback parameter (38%) sends the delayed signal back into the delay input, creating further echoes — each 38% as loud as the previous. At 38%, you hear 4–5 audible repeats before they fade below perception.</dd></div>
+      <div class="ref-term"><dt>chorus</dt>
+        <dd>Two short delay lines (12ms and 27ms) whose delay times are slowly modulated by a low-frequency oscillator (LFO) at 0.45 Hz. The very slight pitch variation this creates gives the impression of multiple instruments playing in unison — the "thickening" effect heard on electric piano and guitar.</dd></div>
+      <div class="ref-term"><dt>LFO (Low Frequency Oscillator)</dt>
+        <dd>An oscillator running below the range of hearing (typically 0.1–20 Hz). Rather than producing audible sound, it generates a slow cyclic signal used to modulate other parameters — vibrato rate, filter frequency, delay time. Here used at 0.45 Hz to animate the chorus effect and at 5–5.5 Hz for instrument vibrato.</dd></div>
+    </div>
+
+    <div class="ref-section">
+      <h3>synthesis methods</h3>
+      <div class="ref-term"><dt>oscillator</dt>
+        <dd>A circuit (or its digital equivalent) that generates a periodic waveform at a given frequency. Sine wave: pure, smooth — only the fundamental frequency. Triangle wave: slightly hollow — odd harmonics that decrease quickly. Sawtooth wave: buzzy, bright — all harmonics present, decreasing by 1/n.</dd></div>
+      <div class="ref-term"><dt>FM synthesis (Frequency Modulation)</dt>
+        <dd>A synthesis method where one oscillator (the modulator) continuously varies the pitch of another (the carrier). The modulation index controls the depth of pitch variation. High index → complex, metallic, inharmonic sound. Low index → near-pure tone. A decaying modulation envelope creates the "metallic attack fading to clarity" characteristic of 1980s digital synthesizers (Yamaha DX7).</dd></div>
+      <div class="ref-term"><dt>inharmonic partials</dt>
+        <dd>Overtones that are not integer multiples of the fundamental frequency. Acoustic instruments like bells and marimba bars have inharmonic partials because their vibrating bodies are two-dimensional (plates, bars) rather than one-dimensional (strings, air columns). The FM bell uses a modulation ratio of ×3.5 (not an integer) to generate inharmonic partials, giving it a bell-like quality.</dd></div>
+      <div class="ref-term"><dt>amplitude envelope</dt>
+        <dd>How the volume of a note changes over time after it is struck. Described as ADSR: Attack (time to reach peak volume), Decay (fall from peak to sustain level), Sustain (volume while held), Release (fade after released). This instrument uses very fast attack (2–10ms) and exponential decay with no sustain — the note fades immediately like a plucked or struck instrument.</dd></div>
+      <div class="ref-term"><dt>bandpass filter</dt>
+        <dd>An audio filter that passes frequencies in a band around a centre frequency and attenuates everything outside that band. The Q parameter controls how narrow the band is. Used in the sitar to emphasise the characteristic resonant "twang" frequencies of a plucked string.</dd></div>
+    </div>
+
+    <div class="ref-section">
+      <h3>music theory</h3>
+      <div class="ref-term"><dt>pentatonic scale</dt>
+        <dd>A scale with 5 notes per octave (penta = five). The minor pentatonic (A C D E G) contains no semitone clashes or tritones — intervals that create dissonance. This means any two notes chosen at random from the scale will always sound pleasant together, making it ideal for a generative instrument where notes are selected randomly.</dd></div>
+      <div class="ref-term"><dt>solfège</dt>
+        <dd>A system of naming notes using syllables: Do Re Mi Fa Sol La Si (Do). Used across Italian, French, Spanish, Turkish, and other musical traditions. In the fixed-do system (used here), Do always refers to C regardless of the key. In movable-do, Do is the root of whatever key you are in.</dd></div>
+      <div class="ref-term"><dt>mode</dt>
+        <dd>A scale derived by starting the major scale on a different degree. Lydian is the major scale starting on the 4th degree; Phrygian starts on the 3rd. Each mode has a different arrangement of whole steps and half steps, giving it a distinct emotional quality. Western music theory recognises 7 modes; non-Western traditions use many more.</dd></div>
+      <div class="ref-term"><dt>tritone</dt>
+        <dd>An interval of 6 semitones — exactly half an octave. Historically called diabolus in musica ("the devil in music") because of its strong dissonant quality. The blues note (flat 5th) is a tritone above the root. The Prometheus and octatonic scales both contain multiple tritone relationships.</dd></div>
+      <div class="ref-term"><dt>equal temperament (12-TET)</dt>
+        <dd>The tuning system where the octave is divided into 12 equal semitones of 100 cents each. Every semitone is identical. Adopted universally for keyboard instruments from the 18th century because it allows playing in any key without retuning. The tradeoff: pure harmonic intervals (5ths, 3rds) are slightly out of tune compared to just intonation. Turkish makam music uses 53-TET instead.</dd></div>
+    </div>
+
+    <div class="ref-section">
+      <h3>Ottoman & Turkish music theory</h3>
+      <div class="ref-term"><dt>makam (مقام)</dt>
+        <dd>The fundamental organisational concept of Ottoman and Turkish classical music — but far more than a scale. A makam specifies: which notes to use, which to emphasise, the characteristic melodic movement (seyir), typical ornaments, phrases that introduce and conclude the makam, and the emotional quality (character/ethos). A Western scale analogy captures perhaps 20% of what a makam is.</dd></div>
+      <div class="ref-term"><dt>seyir (سير)</dt>
+        <dd>The prescribed melodic movement of a makam — the path it must travel ascending and descending. Some makams ascend one way and descend differently. Some begin in the lower register and gradually move upward. The seyir is the "grammar" of the makam; this instrument captures the "vocabulary" (notes and intervals) but not the grammar.</dd></div>
+      <div class="ref-term"><dt>53-TET (53 equal temperament)</dt>
+        <dd>A tuning system dividing the octave into 53 equal divisions used in Ottoman/Turkish classical music theory (the Arel-Ezgi-Uzdilek system). Each step is called a koma. This system accurately represents the microtonal intervals of makam music that fall between the keys of a piano. This instrument uses direct Hz values calculated from 53-TET ratios.</dd></div>
+      <div class="ref-term"><dt>koma (كوما)</dt>
+        <dd>The smallest interval unit in Turkish music theory: 1/53 of an octave, approximately 22.6 cents. Scale degrees in makam theory are specified in komas (e.g. "Segah is 17 komas above the tonic"). A Western semitone is approximately 5 komas; a quarter-tone is approximately 2–3 komas.</dd></div>
+      <div class="ref-term"><dt>Segah (سه گاه)</dt>
+        <dd>The neutral 3rd degree in Rast makam. Approximately 383 cents above the root — between the Western minor 3rd (Eb, 300 cents) and major 3rd (E, 400 cents). This note does not exist in Western equal temperament and cannot be played on a standard piano. Here synthesised at 326.4 Hz (above C4 = 261.63 Hz). "Segah" means "third position" in Persian.</dd></div>
+      <div class="ref-term"><dt>Eviç (اوج)</dt>
+        <dd>The neutral 7th degree in Rast makam. Approximately 1013 cents above the root — between the Western minor 7th (Bb, 1000 cents) and major 7th (B, 1100 cents). Synthesised here at 462 Hz. "Eviç" means "peak" or "height" in Ottoman Turkish, reflecting its position at the top of the Rast scale.</dd></div>
+      <div class="ref-term"><dt>Büselik (بوسليك)</dt>
+        <dd>The characteristic 2nd degree in Uşşak makam — approximately 150 cents above the root A, between the Western Bb (233 Hz) and B (247 Hz). Synthesised here at 239.9 Hz. Its microtonal lowness gives Uşşak its distinctively melancholic, yearning character that differs from both the Western natural minor and Phrygian modes.</dd></div>
+      <div class="ref-term"><dt>Nim Zirgüle (نيم زيرگوله)</dt>
+        <dd>A "half zirgüle" — the characteristic 4th degree in Saba makam, approximately a diminished 4th above the root D. Synthesised here at 366.5 Hz (slightly below F# = 369.99 Hz). "Nim" means "half" in Persian — this is a slightly flattened version of the full Zirgüle. The tension of this near-tritone interval defines Saba's sorrowful quality.</dd></div>
+      <div class="ref-term"><dt>at fırçası (horsehair brush)</dt>
+        <dd>The traditional Ebru brush made from horsehair bound to a rose thorn stem. When loaded with pigment and held over the tray, dragging or tapping deposits many small droplets rather than a single large one. In chord mode, this instrument treats simultaneous multi-zone motion as a single chord event — a brush sweep across three zones produces a three-note chord whose voicing reflects the physical gesture.</dd></div>
+    </div>
+
+  </div><!-- /refbody -->
+</details>
+
+<script>
+// ═══════════════════════════════════════════
+//  CANVAS
+// ═══════════════════════════════════════════
+const cv=document.getElementById('cv'),ct=cv.getContext('2d');
+cv.width=Math.min(680,window.innerWidth-28); cv.height=260;
+
+// ═══════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════
+const SC={
+  mnp:{c:'#3dd6b5',t:'w',z:[['A',220,'C',261.63],['D',293.66,'E',329.63],['G',392,'A',440],['C',523.25,'D',587.33],['E',659.25,'G',783.99]]},
+  mjp:{c:'#ffb74d',t:'w',z:[['C',261.63,'D',293.66],['E',329.63,'G',392],['A',440,'C',523.25],['D',587.33,'E',659.25],['G',783.99,'A',880]]},
+  hir:{c:'#ce93d8',t:'w',z:[['A',220,'B',246.94],['C',261.63,'E',329.63],['F',349.23,'A',440],['B',493.88,'C',523.25],['E',659.25,'F',698.46]]},
+  blu:{c:'#4fc3f7',t:'w',z:[['E',164.81,'G',196],['A',220,'Bb',233.08],['B',246.94,'D',293.66],['E',329.63,'G',392],['A',440,'Bb',466.16]]},
+  wht:{c:'#81c784',t:'w',z:[['C',261.63,'D',293.66],['E',329.63,'F#',369.99],['Ab',415.3,'Bb',466.16],['C',523.25,'D',587.33],['E',659.25,'F#',739.99]]},
+  lyd:{c:'#e040fb',t:'p',z:[['C',261.63,'D',293.66],['E',329.63,'F#',369.99],['G',392,'A',440],['B',493.88,'C',523.25],['D',587.33,'E',659.25]]},
+  phr:{c:'#ff5252',t:'p',z:[['C',261.63,'Db',277.18],['E',329.63,'F',349.23],['G',392,'Ab',415.3],['Bb',466.16,'C',523.25],['Db',554.37,'E',659.25]]},
+  pro:{c:'#ff9100',t:'p',z:[['C',261.63,'D',293.66],['E',329.63,'F#',369.99],['A',440,'Bb',466.16],['C',523.25,'D',587.33],['E',659.25,'F#',739.99]]},
+  hun:{c:'#00e5ff',t:'p',z:[['C',261.63,'D',293.66],['Eb',311.13,'F#',369.99],['G',392,'Ab',415.3],['B',493.88,'C',523.25],['D',587.33,'Eb',622.25]]},
+  oct:{c:'#76ff03',t:'p',z:[['C',261.63,'Db',277.18],['Eb',311.13,'E',329.63],['F#',369.99,'G',392],['A',440,'Bb',466.16],['C',523.25,'Db',554.37]]},
+  rst:{c:'#e8b86d',t:'m',z:[['Do',261.63,'Re',293.66],['Seg',326.4,'Çar',349.23],['Sol',392,'Hüs',440],['Eviç',462,'Do',523.25],['Re',587.33,'Seg',652.8]]},
+  hcz:{c:'#ff8a65',t:'m',z:[['Re',293.66,'Kür',311.13],['Hic',369.99,'Nev',392],['Hüs',440,'Aşi',466.16],['Cer',523.25,'Re',587.33],['Kür',622.25,'Hic',739.99]]},
+  uss:{c:'#90caf9',t:'m',z:[['La',220,'Büs',239.9],['Ce',261.63,'Ne',293.66],['Hüs',329.63,'Hic',349.23],['Ev',392,'La',440],['Büs',479.8,'Ce',523.25]]},
+  sab:{c:'#f48fb1',t:'m',z:[['Re',293.66,'Kür',311.13],['Fa',349.23,'Nim',366.5],['La',440,'Sib',466.16],['Do',523.25,'Re',587.33],['Kür',622.25,'Fa',698.46]]},
+  nkr:{c:'#80cbc4',t:'m',z:[['Do',261.63,'Re',293.66],['Mib',311.13,'Hic',369.99],['Sol',392,'Lab',415.3],['Sib',466.16,'Do',523.25],['Re',587.33,'Mib',622.25]]}
+};
+const ZC=['#4fc3f7','#81c784','#fff176','#ffb74d','#f06292'];
+const ZCR=[[79,195,247],[129,199,132],[255,241,118],[255,183,77],[240,98,146]];
+const SOL={C:'Do',D:'Re',E:'Mi',F:'Fa',G:'Sol',A:'La',B:'Si'};
+const IM={
+  kalimba:{c:'#3dd6b5',d:2200,s:false},handpan:{c:'#ffb74d',d:3700,s:false},
+  marimba:{c:'#81c784',d:1600,s:false},crystal:{c:'#ce93d8',d:4700,s:false},oud:{c:'#ff8a65',d:2000,s:false},
+  fm:{c:'#e040fb',d:3600,s:true},glass:{c:'#40e0d0',d:4300,s:true},
+  pad:{c:'#a78bfa',d:4300,s:true},sitar:{c:'#ffd740',d:2100,s:true},theremin:{c:'#b2ff59',d:3700,s:true}
+};
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let solMode=false,curI='kalimba',curS='mnp',chordMode=false;
+let ac=null,mg=null,rvWet=null,dlWet=null,dlFb=null,dlN=null,chWet=null;
+const drops=[],voices=[],MAX_V=4;
+let lastTrig=0,debMs=180,hasDrop=false;
+const zI=[0,0,0,0,0];
+let wTex=null,wTexPsych=false,mVel=0,lmx=0,lmy=0,lmt=0,rainH=0;
+
+// Camera
+const vid=document.createElement('video');
+vid.autoplay=true;vid.playsInline=true;vid.muted=true;
+const PW=320,PH=180;
+const pcv=document.createElement('canvas');pcv.width=PW;pcv.height=PH;
+const pct=pcv.getContext('2d',{willReadFrequently:true});
+let prevGray=null,camOn=false,camStream=null,camFlip=false;
+const zSm=[0,0,0,0,0],zPSm=[0,0,0,0,0];
+let pxThresh=0.15,slopeThr=0.04;
+
+// ═══════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════
+function dn(n){
+  if(!n.match(/^[CDEFGAB]/)) return n;
+  if(!solMode) return n.replace('b','♭');
+  return SOL[n[0]]+(n.includes('#')?'#':n.includes('b')?'♭':'');
+}
+
+// ═══════════════════════════════════════════
+//  AUDIO
+// ═══════════════════════════════════════════
+// Split into two parts so iOS gesture requirement is met before heavy computation.
+// Part 1: unlock audio instantly (called on first touch anywhere on page)
+function initAC(){
+  if(ac) return;
+  try{
+    // iOS fix: play a silent <audio> element first to switch from ringer to media channel
+    const silencer=document.createElement('audio');
+    silencer.src='data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV////////////////////////////////////////////AAAAAExhdmM1OC41MQAAAAAAAAAAAAAAACQAAAAAAAAAAB0M1QAAAP/jOMAAAAAAAAAAAABJbmZv';
+    silencer.play().catch(()=>{});
+    ac=new(window.AudioContext||window.webkitAudioContext)();
+    mg=ac.createGain(); mg.gain.value=.8; mg.connect(ac.destination);
+    // Silent buffer trick: forces iOS to actually unlock the audio context
+    const sil=ac.createBuffer(1,1,ac.sampleRate);
+    const src=ac.createBufferSource(); src.buffer=sil;
+    src.connect(ac.destination); src.start(0);
+    ac.resume(); // async but audio is already unlocked by the buffer above
+    // Defer heavy reverb/delay setup so it doesn't block the touch gesture
+    setTimeout(setupFX, 80);
+  }catch(e){}
+}
+// Part 2: set up effects — runs 80ms after first touch, outside gesture window
+function setupFX(){
+  if(!ac) return;
+  try{
+    const r=ac.sampleRate,len=Math.floor(r*2.5),buf=ac.createBuffer(2,len,r);
+    for(let ch=0;ch<2;ch++){const d=buf.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,1.7);}
+    const conv=ac.createConvolver(); conv.buffer=buf;
+    rvWet=ac.createGain(); rvWet.gain.value=0;
+    mg.connect(conv); conv.connect(rvWet); rvWet.connect(ac.destination);
+    dlN=ac.createDelay(1); dlN.delayTime.value=.3;
+    dlFb=ac.createGain(); dlFb.gain.value=.38; dlWet=ac.createGain(); dlWet.gain.value=0;
+    mg.connect(dlN); dlN.connect(dlFb); dlFb.connect(dlN); dlN.connect(dlWet); dlWet.connect(ac.destination);
+    const ch1=ac.createDelay(.05),ch2=ac.createDelay(.05);
+    ch1.delayTime.value=.012; ch2.delayTime.value=.027;
+    const lfo=ac.createOscillator(),lfoG=ac.createGain();
+    lfo.frequency.value=.45; lfoG.gain.value=.004;
+    lfo.connect(lfoG); lfoG.connect(ch1.delayTime); lfo.start();
+    chWet=ac.createGain(); chWet.gain.value=0;
+    mg.connect(ch1); mg.connect(ch2); ch1.connect(chWet); ch2.connect(chWet); chWet.connect(ac.destination);
+  }catch(e){}
+}
+function mkO(t,f,p,a,d,n){
+  const o=ac.createOscillator(),g=ac.createGain();
+  o.type=t; o.frequency.value=f;
+  g.gain.setValueAtTime(.001,n); g.gain.exponentialRampToValueAtTime(Math.max(.001,p),n+a); g.gain.exponentialRampToValueAtTime(.001,n+d);
+  o.connect(g); g.connect(mg); o.start(n); o.stop(n+d+.1); return{osc:o,gain:g};
+}
+const SY={
+  kalimba:(f,n,v)=>[mkO('sine',f,.5*v,.003,2,n),mkO('sine',f*4.03,.1*v,.001,.36,n),mkO('sine',f*2,.07*v,.002,.9,n)],
+  handpan:(f,n,v)=>[mkO('sine',f,.48*v,.009,3.5,n),mkO('sine',f*2,.14*v,.006,2.45,n),mkO('sine',f*3,.06*v,.004,1.4,n),mkO('sine',f*4,.025*v,.003,.7,n)],
+  marimba:(f,n,v)=>[mkO('triangle',f,.55*v,.002,1.4,n),mkO('sine',f*4,.14*v,.001,.21,n),mkO('sine',f*10,.04*v,.001,.07,n)],
+  crystal:(f,n,v)=>[mkO('sine',f,.32*v,.002,4.5,n),mkO('sine',f*2.756,.11*v,.001,2.7,n),mkO('sine',f*5.404,.055*v,.001,1.35,n)],
+  oud:(f,n,v)=>{
+    const o=ac.createOscillator(),fl=ac.createBiquadFilter(),g=ac.createGain();
+    o.type='sawtooth'; o.frequency.value=f; fl.type='lowpass'; fl.Q.value=1.8;
+    fl.frequency.setValueAtTime(Math.min(f*14,8000),n); fl.frequency.exponentialRampToValueAtTime(f*2.2,n+.22);
+    g.gain.setValueAtTime(.001,n); g.gain.exponentialRampToValueAtTime(.45*v,n+.004); g.gain.exponentialRampToValueAtTime(.001,n+1.8);
+    o.connect(fl); fl.connect(g); g.connect(mg); o.start(n); o.stop(n+1.9);
+    return[{osc:o,gain:g},mkO('sine',f,.1*v,.004,1.5,n)];
+  },
+  fm:(f,n,v)=>{
+    const car=ac.createOscillator(),mod=ac.createOscillator(),modG=ac.createGain(),outG=ac.createGain();
+    car.type='sine'; car.frequency.value=f; mod.type='sine'; mod.frequency.value=f*3.5;
+    modG.gain.setValueAtTime(f*6,n); modG.gain.exponentialRampToValueAtTime(f*.25,n+.7); modG.gain.exponentialRampToValueAtTime(.001,n+3.6);
+    outG.gain.setValueAtTime(.001,n); outG.gain.exponentialRampToValueAtTime(.48*v,n+.004); outG.gain.exponentialRampToValueAtTime(.001,n+3.6);
+    mod.connect(modG); modG.connect(car.frequency); car.connect(outG); outG.connect(mg);
+    mod.start(n); car.start(n); mod.stop(n+3.7); car.stop(n+3.7);
+    return[{osc:car,gain:outG},{osc:mod,gain:modG}];
+  },
+  glass:(f,n,v)=>{
+    const osc=ac.createOscillator(),vib=ac.createOscillator(),vibG=ac.createGain(),g=ac.createGain();
+    osc.type='sine'; osc.frequency.value=f; vib.type='sine'; vib.frequency.value=4.8;
+    vibG.gain.setValueAtTime(.001,n); vibG.gain.linearRampToValueAtTime(f*.008,n+.5);
+    g.gain.setValueAtTime(.001,n); g.gain.linearRampToValueAtTime(.36*v,n+.38); g.gain.exponentialRampToValueAtTime(.001,n+4.2);
+    vib.connect(vibG); vibG.connect(osc.frequency); osc.connect(g); g.connect(mg);
+    osc.start(n); vib.start(n); osc.stop(n+4.3); vib.stop(n+4.3);
+    return[{osc,gain:g},{osc:vib,gain:vibG}];
+  },
+  pad:(f,n,v)=>[0,1.0025,.9978].map((dt,i)=>{
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.type='sine'; o.frequency.value=f*dt;
+    g.gain.setValueAtTime(.001,n); g.gain.linearRampToValueAtTime([.28,.2,.2][i]*v,n+.28); g.gain.exponentialRampToValueAtTime(.001,n+4.2);
+    o.connect(g); g.connect(mg); o.start(n); o.stop(n+4.3); return{osc:o,gain:g};
+  }),
+  sitar:(f,n,v)=>{
+    const o=ac.createOscillator(),bp=ac.createBiquadFilter(),lp=ac.createBiquadFilter(),g=ac.createGain();
+    o.type='sawtooth'; o.frequency.value=f; bp.type='bandpass'; bp.frequency.value=f*2.2; bp.Q.value=2; lp.type='lowpass'; lp.frequency.value=f*9;
+    g.gain.setValueAtTime(.001,n); g.gain.exponentialRampToValueAtTime(.44*v,n+.003); g.gain.exponentialRampToValueAtTime(.001,n+2);
+    o.connect(bp); bp.connect(lp); lp.connect(g); g.connect(mg); o.start(n); o.stop(n+2.1);
+    const dr=ac.createOscillator(),dg=ac.createGain();
+    dr.type='triangle'; dr.frequency.value=f*.5;
+    dg.gain.setValueAtTime(.001,n); dg.gain.exponentialRampToValueAtTime(.07*v,n+.01); dg.gain.exponentialRampToValueAtTime(.001,n+3);
+    dr.connect(dg); dg.connect(mg); dr.start(n); dr.stop(n+3.1);
+    return[{osc:o,gain:g},{osc:dr,gain:dg}];
+  },
+  theremin:(f,n,v)=>{
+    const osc=ac.createOscillator(),vib=ac.createOscillator(),vibG=ac.createGain(),g=ac.createGain();
+    osc.type='sine'; osc.frequency.value=f; vib.type='sine'; vib.frequency.value=5.5;
+    vibG.gain.setValueAtTime(.001,n); vibG.gain.linearRampToValueAtTime(f*.014,n+.2);
+    g.gain.setValueAtTime(.001,n); g.gain.linearRampToValueAtTime(.44*v,n+.07); g.gain.exponentialRampToValueAtTime(.001,n+3.6);
+    vib.connect(vibG); vibG.connect(osc.frequency); osc.connect(g); g.connect(mg);
+    osc.start(n); vib.start(n); osc.stop(n+3.7); vib.stop(n+3.7);
+    return[{osc,gain:g},{osc:vib,gain:vibG}];
+  }
+};
+function stopV(v){
+  if(!ac) return; const t=ac.currentTime;
+  v.nodes.forEach(({osc,gain})=>{
+    try{gain.gain.cancelScheduledValues(t);gain.gain.exponentialRampToValueAtTime(.001,t+.05);}catch(e){}
+    try{osc.stop(t+.06);}catch(e){}
+  });
+}
+function updDots(){for(let i=0;i<4;i++){const d=document.getElementById('v'+i);if(!d)return;if(i<voices.length){const c=IM[voices[i].ins].c;d.style.background=c;d.style.borderColor=c;}else{d.style.background='';d.style.borderColor='';}}}
+function updVB(v){const n=Math.round(v*5),c=IM[curI].c;for(let i=0;i<5;i++){const s=document.getElementById('vs'+i);if(s)s.style.background=i<n?c:'';}}
+function updZL(){const s=SC[curS];for(let z=0;z<5;z++){const e=document.getElementById('zl'+z);if(e)e.textContent=dn(s.z[z][0])+' · '+dn(s.z[z][2]);}}
+function setScale(k){
+  curS=k; updZL();
+  document.querySelectorAll('.scalebtn').forEach(b=>{const s=SC[b.dataset.k];if(!s)return;const a=b.dataset.k===k;b.style.borderColor=a?s.c:'';b.querySelector('.bn').style.color=a?s.c:'';});
+}
+
+// ═══════════════════════════════════════════
+//  FIRE NOTE (unified path: camera + manual)
+// ═══════════════════════════════════════════
+function fireNote(zone,opts={}){
+  initAC(); // audio already unlocked by initAC's silent buffer trick
+  hasDrop=true;
+  const s=SC[curS],zd=s.z[zone];
+  const pick=Math.random()<.5?0:2;
+  const nm=zd[pick],hz=zd[pick+1];
+  const ins=curI,psych=IM[ins].s||s.t==='p';
+  const vel=opts.vel!==undefined?opts.vel:Math.min(1,Math.max(.18,mVel*3+.18));
+  updVB(vel);
+  let color;
+  if(psych){rainH=(rainH+47)%360;color=`hsl(${rainH},95%,65%)`;}else color=ZC[zone];
+  const pts=psych?Array.from({length:10},()=>({a:Math.random()*Math.PI*2,sp:.4+Math.random()*1.2,sz:1.5+Math.random()*2.5})):null;
+  const zoneW=cv.width/5;
+  const dx=opts.x!==undefined?opts.x:(zone+.5)*zoneW+(Math.random()-.5)*zoneW*.55;
+  const dy=opts.y!==undefined?opts.y:cv.height*(.25+Math.random()*.5);
+  drops.push({x:dx,y:dy,c:color,born:performance.now(),r:28+vel*55,pts});
+  zI[zone]=1;
+  if(!ac) return nm;
+  if(voices.length>=MAX_V) stopV(voices.shift());
+  const vn={nodes:SY[ins](hz,ac.currentTime,vel),ins,zone};
+  voices.push(vn); updDots();
+  setTimeout(()=>{const i=voices.indexOf(vn);if(i>=0){voices.splice(i,1);updDots();}},IM[ins].d+200);
+  const trig=document.getElementById('trig');
+  if(trig&&!opts.silent){trig.style.background=color;setTimeout(()=>trig.style.background='',130);}
+  return nm;
+}
+
+function showNoteDisplay(noteName,zone,source,isChord,chordNotes){
+  const s=SC[curS],zd=s.z[zone];
+  const hz=zd[noteName===zd[0]?1:3];
+  const hzStr=SC[curS].t==='m'?' ('+hz.toFixed(1)+'Hz)':'';
+  const no=document.getElementById('no');if(!no) return;
+  const prefix=isChord?'[chord] ':'['+source+'] zone '+(zone+1)+' → ';
+  const content=isChord?(chordNotes.join(' + ')+' ('+chordNotes.length+' zones)'):(noteName+hzStr);
+  no.textContent=prefix+content;
+  no.style.color=isChord?'#e040fb':IM[curI].c;
+  setTimeout(()=>no.style.color='',900);
+}
+
+// ═══════════════════════════════════════════
+//  MANUAL TAP
+// ═══════════════════════════════════════════
+function onTap(e){
+  e.preventDefault();
+  const now=Date.now();if(now-lastTrig<debMs) return;
+  lastTrig=now;
+  const rect=cv.getBoundingClientRect();
+  const cx2=e.touches?e.touches[0].clientX:e.clientX;
+  const cy2=e.touches?e.touches[0].clientY:e.clientY;
+  const x=(cx2-rect.left)*(cv.width/rect.width);
+  const y=(cy2-rect.top)*(cv.height/rect.height);
+  const zone=Math.min(4,Math.floor(x/(cv.width/5)));
+  const nm=fireNote(zone,{x,y});
+  showNoteDisplay(nm,zone,'tap',false,[]);
+}
+cv.addEventListener('click',onTap);
+cv.addEventListener('touchstart',onTap,{passive:false});
+
+// ═══════════════════════════════════════════
+//  CAMERA: START / STOP
+// ═══════════════════════════════════════════
+async function startCam(){
+  try{
+    const devs=await navigator.mediaDevices.enumerateDevices();
+    const vdevs=devs.filter(d=>d.kind==='videoinput');
+    const sel=document.getElementById('csel');
+    if(vdevs.length>1){
+      sel.innerHTML=vdevs.map((d,i)=>`<option value="${d.deviceId}">${d.label||'Camera '+(i+1)}</option>`).join('');
+      sel.style.display='';
+    }
+    // On mobile: prefer back/environment camera. On desktop: no facing preference.
+    const isMobile=/Mobi|Android/i.test(navigator.userAgent);
+    camStream=await navigator.mediaDevices.getUserMedia({
+      video:{
+        deviceId: sel.value?{exact:sel.value}:undefined,
+        facingMode: sel.value?undefined:(isMobile?{ideal:'environment'}:undefined),
+        width:{ideal:1920}, height:{ideal:1080},
+        frameRate:{ideal:30,max:60}
+      }
+    });
+    vid.srcObject=camStream; await vid.play();
+    camOn=true; prevGray=null;
+    document.getElementById('cview').style.display='';
+    document.getElementById('cbtn').textContent='⬛ Stop Camera';
+    document.getElementById('cbtn').classList.add('live');
+    document.getElementById('cstat').textContent='· LIVE';
+    document.getElementById('cstat').style.color='#3dd6b5';
+  }catch(err){
+    document.getElementById('cstat').textContent='· '+err.message;
+    document.getElementById('cstat').style.color='#f06292';
+  }
+}
+function stopCam(){
+  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
+  camOn=false; vid.srcObject=null; prevGray=null;
+  for(let z=0;z<5;z++){zSm[z]=0;zPSm[z]=0;}
+  document.getElementById('cview').style.display='none';
+  document.getElementById('cbtn').textContent='▶ Start Camera';
+  document.getElementById('cbtn').classList.remove('live');
+  document.getElementById('cstat').textContent='· click Start to activate';
+  document.getElementById('cstat').style.color='';
+  document.getElementById('cdbg').textContent='—';
+}
+
+// ═══════════════════════════════════════════
+//  CAMERA: PROCESS FRAME
+// ═══════════════════════════════════════════
+function procCam(){
+  if(!camOn||vid.readyState<2) return;
+  pct.save();
+  if(camFlip){pct.translate(PW,0);pct.scale(-1,1);}
+  pct.drawImage(vid,0,0,PW,PH); pct.restore();
+  const raw=pct.getImageData(0,0,PW,PH).data;
+  const gray=new Uint8Array(PW*PH);
+  for(let i=0;i<PW*PH;i++){const p=i*4;gray[i]=raw[p]*.299+raw[p+1]*.587+raw[p+2]*.114;}
+  if(!prevGray){prevGray=gray;return;}
+  const thr=pxThresh*255;
+  const zW=Math.floor(PW/5),zPx=zW*PH;
+  const rawZ=[0,0,0,0,0];
+  const vis=new Uint8ClampedArray(PW*PH*4);
+  for(let y=0;y<PH;y++){
+    for(let x=0;x<PW;x++){
+      const i=y*PW+x,p=i*4;
+      const diff=Math.abs(gray[i]-prevGray[i]);
+      const z=Math.min(4,Math.floor(x/zW));
+      if(diff>thr){
+        rawZ[z]++;
+        vis[p]=ZCR[z][0];vis[p+1]=ZCR[z][1];vis[p+2]=ZCR[z][2];vis[p+3]=200;
+      }else{const g=gray[i]*.3;vis[p]=g;vis[p+1]=g;vis[p+2]=g;vis[p+3]=255;}
+    }
+  }
+  // Exponential smooth + slope
+  const slopes=[];
+  for(let z=0;z<5;z++){
+    zPSm[z]=zSm[z];
+    zSm[z]=zSm[z]*.7+(rawZ[z]/zPx)*.3;
+    slopes.push(zSm[z]-zPSm[z]);
+    zI[z]=Math.min(1,zSm[z]*12);
+  }
+  // Trigger logic
+  const now=Date.now();
+  if(now-lastTrig>debMs){
+    if(chordMode){
+      // Chord mode: all zones above slope threshold fire simultaneously
+      const hits=[];
+      for(let z=0;z<5;z++){
+        if(slopes[z]>slopeThr) hits.push({z,slope:slopes[z],vel:Math.min(1,Math.max(.2,zSm[z]*10))});
+      }
+      if(hits.length>0){
+        lastTrig=now;
+        hits.sort((a,b)=>b.vel-a.vel);
+        const firedNames=[];
+        hits.slice(0,MAX_V).forEach(h=>{
+          const nm=fireNote(h.z,{vel:h.vel,silent:true});
+          firedNames.push(dn(nm));
+        });
+        const trig=document.getElementById('trig');
+        if(trig){trig.style.background='#e040fb';setTimeout(()=>trig.style.background='',130);}
+        const no=document.getElementById('no');
+        if(no){no.textContent='[chord] '+firedNames.join(' + ')+' ('+hits.length+' zone'+(hits.length>1?'s':'')+'  brush detected)';no.style.color='#e040fb';setTimeout(()=>no.style.color='',900);}
+      }
+    }else{
+      // Single mode: peak slope zone only
+      let peak=-Infinity,peakZ=-1;
+      for(let z=0;z<5;z++){if(slopes[z]>peak){peak=slopes[z];peakZ=z;}}
+      if(peak>slopeThr&&peakZ>=0){
+        lastTrig=now;
+        const vel=Math.min(1,Math.max(.2,zSm[peakZ]*10));
+        const nm=fireNote(peakZ,{vel,silent:true});
+        showNoteDisplay(nm,peakZ,'cam',false,[]);
+        const trig=document.getElementById('trig');
+        if(trig){trig.style.background=ZC[peakZ];setTimeout(()=>trig.style.background='',130);}
+      }
+    }
+  }
+  prevGray=gray;
+  // Draw preview
+  const cview=document.getElementById('cview');
+  const cct=cview.getContext('2d');
+  cct.putImageData(new ImageData(vis,PW,PH),0,0);
+  cct.strokeStyle='rgba(255,255,255,0.18)';cct.lineWidth=1;
+  for(let i=1;i<5;i++){cct.beginPath();cct.moveTo(i*zW,0);cct.lineTo(i*zW,PH);cct.stroke();}
+  cct.font='9px monospace';cct.textAlign='center';
+  const s=SC[curS];
+  for(let z=0;z<5;z++){
+    cct.fillStyle=`rgba(${ZCR[z].join(',')},0.8)`;
+    cct.fillText(dn(s.z[z][0])+' · '+dn(s.z[z][2]),z*zW+zW/2,PH-5);
+  }
+  // Zone intensity bars at top of preview
+  for(let z=0;z<5;z++){
+    cct.fillStyle=`rgba(${ZCR[z].join(',')},0.55)`;
+    cct.fillRect(z*zW+1,0,zSm[z]*zW*.9,4);
+  }
+  const baseline=(zSm[0]+zSm[1]+zSm[2]+zSm[3]+zSm[4])/5;
+  const peakSlope=Math.max(...slopes);
+  document.getElementById('cdbg').textContent='noise:'+(baseline*100).toFixed(1)+'%  slope:'+peakSlope.toFixed(3);
+}
+
+// ═══════════════════════════════════════════
+//  TRAY DRAWING
+// ═══════════════════════════════════════════
+function buildTex(p){
+  const o=document.createElement('canvas'); o.width=cv.width; o.height=cv.height;
+  const c=o.getContext('2d');
+  c.fillStyle=p?'#0a0520':'#05080e'; c.fillRect(0,0,o.width,o.height);
+  const lc=p?'rgba(150,50,220,0.05)':'rgba(70,120,200,0.04)';
+  for(let y=12;y<o.height;y+=18){c.strokeStyle=lc;c.lineWidth=1;c.beginPath();for(let x=0;x<=o.width;x+=6){const wy=y+Math.sin(x*.035+y*.07)*3.5;x===0?c.moveTo(x,wy):c.lineTo(x,wy);}c.stroke();}
+  wTex=o; wTexPsych=p;
+}
+const ease=t=>1-Math.pow(1-t,3);
+
+function drawTray(){
+  const now=performance.now();
+  const psych=IM[curI].s||SC[curS].t==='p';
+  if(!wTex||wTex.width!==cv.width||wTexPsych!==psych) buildTex(psych);
+  ct.clearRect(0,0,cv.width,cv.height); ct.drawImage(wTex,0,0);
+  const W=cv.width,H=cv.height,zW=W/5,s=SC[curS];
+  for(let z=0;z<5;z++){if(zI[z]>.005){ct.fillStyle=psych?`hsl(${z*72},90%,60%)`:ZC[z];ct.globalAlpha=zI[z]*.07;ct.fillRect(z*zW,0,zW,H);ct.globalAlpha=1;}}
+  ct.strokeStyle='rgba(255,255,255,0.05)';ct.lineWidth=.5;
+  for(let i=1;i<5;i++){ct.beginPath();ct.moveTo(i*zW,0);ct.lineTo(i*zW,H);ct.stroke();}
+  ct.font='10px monospace';ct.textAlign='center';
+  for(let z=0;z<5;z++){ct.fillStyle=psych?`hsl(${z*72},80%,65%)`:ZC[z];ct.globalAlpha=.38;ct.fillText(dn(s.z[z][0])+' · '+dn(s.z[z][2]),z*zW+zW/2,16);ct.globalAlpha=1;}
+  if(s.t==='m'){ct.fillStyle='rgba(255,200,100,0.2)';ct.font='8px monospace';ct.fillText('~ microtonal',W/2,H-6);}
+  for(let i=drops.length-1;i>=0;i--){
+    const d=drops[i],age=(now-d.born)/2800;if(age>=1){drops.splice(i,1);continue;}
+    ct.strokeStyle=d.c;ct.lineWidth=1.5;ct.globalAlpha=Math.max(0,1-age*3)*.72;
+    ct.beginPath();ct.arc(d.x,d.y,d.r*ease(Math.min(age*4.5,1)),0,Math.PI*2);ct.stroke();
+    ct.globalAlpha=Math.max(0,.42-age*1.7)*.55;ct.lineWidth=1;
+    ct.beginPath();ct.arc(d.x,d.y,d.r*ease(Math.min(age*2.8,1))*.52,0,Math.PI*2);ct.stroke();
+    const br=Math.max(2,22*ease(Math.min(age*7,1))*(1-age*.72));
+    ct.globalAlpha=Math.max(0,.92-age*.8);ct.fillStyle=d.c;ct.beginPath();ct.arc(d.x,d.y,br,0,Math.PI*2);ct.fill();
+    if(d.pts){d.pts.forEach(p=>{const t=age*2.2,px=d.x+Math.cos(p.a)*p.sp*t*d.r,py=d.y+Math.sin(p.a)*p.sp*t*d.r;ct.globalAlpha=Math.max(0,1-t*1.2)*.65;ct.fillStyle=d.c;ct.beginPath();ct.arc(px,py,p.sz*(1-age*.8),0,Math.PI*2);ct.fill();});}
+    ct.globalAlpha=1;
+  }
+  if(!hasDrop){
+    ct.textAlign='center';ct.fillStyle='rgba(255,255,255,0.13)';ct.font='13px monospace';
+    ct.fillText(camOn?'waiting for paint impact…':'click anywhere · or start camera for live detection',W/2,H/2);
+    ct.fillStyle='rgba(255,255,255,0.06)';ct.font='10px monospace';
+    ct.fillText('left = low notes    right = high notes    speed = volume',W/2,H/2+20);
+  }
+  for(let i=0;i<5;i++){if(!camOn)zI[i]*=.88;const f=document.getElementById('zf'+i);if(f)f.style.width=(zI[i]*100).toFixed(1)+'%';}
+}
+
+// ═══════════════════════════════════════════
+//  POINTER TRACKING
+// ═══════════════════════════════════════════
+function trk(x,y){const n=Date.now(),dt=n-lmt;if(dt>0&&dt<100){const dx=x-lmx,dy=y-lmy;mVel=mVel*.6+Math.sqrt(dx*dx+dy*dy)/dt*.4;}lmx=x;lmy=y;lmt=n;}
+cv.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect();trk(e.clientX-r.left,e.clientY-r.top);});
+cv.addEventListener('touchmove',e=>{const r=cv.getBoundingClientRect();trk(e.touches[0].clientX-r.left,e.touches[0].clientY-r.top);},{passive:true});
+
+// ═══════════════════════════════════════════
+//  GAME LOOP
+// ═══════════════════════════════════════════
+function gameLoop(){procCam();drawTray();requestAnimationFrame(gameLoop);}
+
+// ═══════════════════════════════════════════
+//  WIRING
+// ═══════════════════════════════════════════
+document.getElementById('cbtn').addEventListener('click',()=>camOn?stopCam():startCam());
+document.getElementById('cflip').addEventListener('change',function(){camFlip=this.checked;});
+document.getElementById('csel').addEventListener('change',()=>{if(camOn){stopCam();startCam();}});
+document.getElementById('ptc').addEventListener('input',function(){pxThresh=parseFloat(this.value);document.getElementById('ptv').textContent=parseFloat(this.value).toFixed(2);});
+document.getElementById('stc').addEventListener('input',function(){slopeThr=parseFloat(this.value);document.getElementById('stv').textContent=parseFloat(this.value).toFixed(3);});
+
+document.getElementById('singlebtn').addEventListener('click',()=>{
+  chordMode=false;
+  document.getElementById('singlebtn').classList.add('active');
+  document.getElementById('chordbtn').classList.remove('active');
+});
+document.getElementById('chordbtn').addEventListener('click',()=>{
+  chordMode=true;
+  document.getElementById('chordbtn').classList.add('active');
+  document.getElementById('singlebtn').classList.remove('active');
+});
+
+document.querySelectorAll('#ac-i .btn,#sy-i .btn').forEach(b=>b.addEventListener('click',()=>{
+  curI=b.dataset.k;
+  document.querySelectorAll('#ac-i .btn,#sy-i .btn').forEach(b2=>{const a=b2.dataset.k===curI,c=IM[b2.dataset.k]?.c;b2.style.borderColor=a&&c?c:'';b2.querySelector('.bn').style.color=a&&c?c:'';});
+}));
+document.querySelectorAll('.scalebtn').forEach(b=>b.addEventListener('click',()=>setScale(b.dataset.k)));
+document.getElementById('ntog').addEventListener('click',function(){solMode=!solMode;this.textContent=solMode?'Sol':'ABC';this.classList.toggle('on',solMode);updZL();});
+document.getElementById('rvc').addEventListener('input',function(){const v=parseFloat(this.value);if(rvWet)rvWet.gain.value=v;document.getElementById('rvv').textContent=v.toFixed(2);});
+document.getElementById('dlc').addEventListener('input',function(){const v=parseFloat(this.value);if(dlWet)dlWet.gain.value=v;document.getElementById('dlv').textContent=v.toFixed(2);});
+document.getElementById('chc').addEventListener('input',function(){const v=parseFloat(this.value);if(chWet)chWet.gain.value=v;document.getElementById('chv').textContent=v.toFixed(2);});
+document.getElementById('dbc').addEventListener('input',function(){debMs=parseInt(this.value);document.getElementById('dbv').textContent=this.value+'ms';});
+document.getElementById('vlc').addEventListener('input',function(){const v=parseFloat(this.value);if(mg)mg.gain.value=v;document.getElementById('vlv').textContent=v.toFixed(2);});
+
+buildTex(false);gameLoop();setScale('mnp');
+
+// Pre-init audio on very first touch anywhere on the page.
+// This satisfies iOS gesture requirement before the user taps a specific element.
+document.addEventListener('touchstart', function(){
+  initAC();
+}, {once:true, passive:true});
+</script>
+</body>
+</html>
