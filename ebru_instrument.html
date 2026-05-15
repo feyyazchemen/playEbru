@@ -411,29 +411,27 @@ function dn(n){
 // ═══════════════════════════════════════════
 //  AUDIO
 // ═══════════════════════════════════════════
-// Split into two parts so iOS gesture requirement is met before heavy computation.
-// Part 1: unlock audio instantly (called on first touch anywhere on page)
+// AUDIO INIT — split so iOS gesture requirement is met cleanly
+// Step 1: called synchronously inside touchstart/click handler
 function initAC(){
   if(ac) return;
   try{
-    // iOS fix: play a silent <audio> element first to switch from ringer to media channel
-    const silencer=document.createElement('audio');
-    silencer.src='data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV////////////////////////////////////////////AAAAAExhdmM1OC41MQAAAAAAAAAAAAAAACQAAAAAAAAAAB0M1QAAAP/jOMAAAAAAAAAAAABJbmZv';
-    silencer.play().catch(()=>{});
     ac=new(window.AudioContext||window.webkitAudioContext)();
-    mg=ac.createGain(); mg.gain.value=.8; mg.connect(ac.destination);
-    // Silent buffer trick: forces iOS to actually unlock the audio context
+    // resume() must be called synchronously in the gesture handler on iOS
+    ac.resume();
+    // Play a zero-length silent buffer — this is what actually unlocks iOS audio
     const sil=ac.createBuffer(1,1,ac.sampleRate);
-    const src=ac.createBufferSource(); src.buffer=sil;
-    src.connect(ac.destination); src.start(0);
-    ac.resume(); // async but audio is already unlocked by the buffer above
-    // Defer heavy reverb/delay setup so it doesn't block the touch gesture
-    setTimeout(setupFX, 80);
+    const silSrc=ac.createBufferSource();
+    silSrc.buffer=sil; silSrc.connect(ac.destination); silSrc.start(0);
+    // Master gain
+    mg=ac.createGain(); mg.gain.value=.8; mg.connect(ac.destination);
+    // Effects setup deferred 100ms so it doesn't compete with the gesture handler
+    setTimeout(setupFX,100);
   }catch(e){}
 }
-// Part 2: set up effects — runs 80ms after first touch, outside gesture window
+// Step 2: heavy audio graph setup — safe to run outside gesture window
 function setupFX(){
-  if(!ac) return;
+  if(!ac||!mg) return;
   try{
     const r=ac.sampleRate,len=Math.floor(r*2.5),buf=ac.createBuffer(2,len,r);
     for(let ch=0;ch<2;ch++){const d=buf.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,1.7);}
@@ -822,52 +820,39 @@ document.getElementById('dbc').addEventListener('input',function(){debMs=parseIn
 document.getElementById('vlc').addEventListener('input',function(){const v=parseFloat(this.value);if(mg)mg.gain.value=v;document.getElementById('vlv').textContent=v.toFixed(2);});
 
 buildTex(false);gameLoop();setScale('mnp');
-// Fullscreen tap-to-begin overlay — required on iOS to unlock Web Audio.
-// iOS Safari silences all Web Audio until a direct user gesture occurs.
-// This overlay guarantees audio is unlocked before the instrument is used.
-(function(){
-  const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(8,11,20,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;cursor:pointer;user-select:none;';
-  overlay.innerHTML='<div style="font-family:monospace;text-align:center;padding:20px">'
-    +'<div style="font-size:32px;margin-bottom:16px">◎</div>'
-    +'<div style="font-size:18px;color:#3dd6b5;font-weight:bold;margin-bottom:10px">ebru water instrument</div>'
-    +'<div style="font-size:13px;color:#555;margin-bottom:32px">tap anywhere to begin</div>'
-    +'<div style="font-size:11px;color:#2e3650;max-width:280px;line-height:1.6">'
-    +'left = low notes &nbsp;·&nbsp; right = high notes<br>speed = volume'
-    +'</div></div>';
-  document.body.appendChild(overlay);
-  function unlock(){
-    // Create audio context on user gesture (required by iOS)
-    initAC();
-    if(!ac) return;
-    // Resume if suspended
-    ac.resume().then(()=>{
-      // Play a 1-frame silent buffer — the iOS "true unlock" trick
-      const buf=ac.createBuffer(1,1,ac.sampleRate);
-      const src=ac.createBufferSource();
-      src.buffer=buf;
-      src.connect(ac.destination);
-      src.start(0);
-      src.onended=()=>{
-        overlay.style.transition='opacity 0.3s';
-        overlay.style.opacity='0';
-        setTimeout(()=>overlay.remove(),300);
-      };
-    }).catch(()=>{
-      overlay.style.transition='opacity 0.3s';
-      overlay.style.opacity='0';
-      setTimeout(()=>overlay.remove(),300);
-    });
-  }
-  overlay.addEventListener('touchend',function(e){e.preventDefault();unlock();},{once:true,passive:false});
-  overlay.addEventListener('click',unlock,{once:true});
-})();
-
-// Pre-init audio on very first touch anywhere on the page.
-// This satisfies iOS gesture requirement before the user taps a specific element.
-document.addEventListener('touchstart', function(){
-  initAC();
-}, {once:true, passive:true});
 </script>
+
+<!-- TAP TO BEGIN overlay — shown immediately, no JS needed to render it -->
+<div id="splash" style="position:fixed;inset:0;background:#080b14;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;touch-action:manipulation">
+  <div style="font-family:'Courier New',monospace;text-align:center;padding:24px">
+    <div style="font-size:36px;color:#3dd6b5;margin-bottom:18px">◎</div>
+    <div style="font-size:20px;color:#3dd6b5;font-weight:bold;margin-bottom:10px">ebru water instrument</div>
+    <div style="font-size:14px;color:#555;margin-bottom:40px">tap anywhere to begin</div>
+    <div style="font-size:11px;color:#2e3650;line-height:1.8">left = low &nbsp;·&nbsp; right = high &nbsp;·&nbsp; speed = volume</div>
+  </div>
+</div>
+
+<script>
+// Single clean audio unlock — touchstart fires synchronously on iOS
+document.getElementById('splash').addEventListener('touchstart', function(e){
+  e.preventDefault();
+  // initAC must run synchronously inside touchstart for iOS to allow audio
+  initAC();
+  // Fade and remove splash
+  const s = document.getElementById('splash');
+  s.style.transition = 'opacity 0.4s';
+  s.style.opacity = '0';
+  setTimeout(function(){ s.remove(); }, 400);
+}, {once:true, passive:false});
+
+// Desktop fallback
+document.getElementById('splash').addEventListener('click', function(){
+  initAC();
+  const s = document.getElementById('splash');
+  s.style.transition = 'opacity 0.4s';
+  s.style.opacity = '0';
+  setTimeout(function(){ s.remove(); }, 400);
+}, {once:true});
+</script></script>
 </body>
 </html>
