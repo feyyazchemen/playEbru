@@ -822,6 +822,46 @@ document.getElementById('dbc').addEventListener('input',function(){debMs=parseIn
 document.getElementById('vlc').addEventListener('input',function(){const v=parseFloat(this.value);if(mg)mg.gain.value=v;document.getElementById('vlv').textContent=v.toFixed(2);});
 
 buildTex(false);gameLoop();setScale('mnp');
+// Fullscreen tap-to-begin overlay — required on iOS to unlock Web Audio.
+// iOS Safari silences all Web Audio until a direct user gesture occurs.
+// This overlay guarantees audio is unlocked before the instrument is used.
+(function(){
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(8,11,20,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;cursor:pointer;user-select:none;';
+  overlay.innerHTML='<div style="font-family:monospace;text-align:center;padding:20px">'
+    +'<div style="font-size:32px;margin-bottom:16px">◎</div>'
+    +'<div style="font-size:18px;color:#3dd6b5;font-weight:bold;margin-bottom:10px">ebru water instrument</div>'
+    +'<div style="font-size:13px;color:#555;margin-bottom:32px">tap anywhere to begin</div>'
+    +'<div style="font-size:11px;color:#2e3650;max-width:280px;line-height:1.6">'
+    +'left = low notes &nbsp;·&nbsp; right = high notes<br>speed = volume'
+    +'</div></div>';
+  document.body.appendChild(overlay);
+  function unlock(){
+    // Create audio context on user gesture (required by iOS)
+    initAC();
+    if(!ac) return;
+    // Resume if suspended
+    ac.resume().then(()=>{
+      // Play a 1-frame silent buffer — the iOS "true unlock" trick
+      const buf=ac.createBuffer(1,1,ac.sampleRate);
+      const src=ac.createBufferSource();
+      src.buffer=buf;
+      src.connect(ac.destination);
+      src.start(0);
+      src.onended=()=>{
+        overlay.style.transition='opacity 0.3s';
+        overlay.style.opacity='0';
+        setTimeout(()=>overlay.remove(),300);
+      };
+    }).catch(()=>{
+      overlay.style.transition='opacity 0.3s';
+      overlay.style.opacity='0';
+      setTimeout(()=>overlay.remove(),300);
+    });
+  }
+  overlay.addEventListener('touchend',function(e){e.preventDefault();unlock();},{once:true,passive:false});
+  overlay.addEventListener('click',unlock,{once:true});
+})();
 
 // Pre-init audio on very first touch anywhere on the page.
 // This satisfies iOS gesture requirement before the user taps a specific element.
