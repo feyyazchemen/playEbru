@@ -84,14 +84,14 @@ input[type=range]{width:100%;accent-color:#a78bfa}
   <canvas id="cview" width="320" height="180" role="img" aria-label="Camera motion detection view"></canvas>
   <div id="cam-sliders">
     <div class="cg">
-      <div class="cl">px threshold <b id="ptv">0.15</b></div>
-      <div class="cd">min pixel brightness change to count as motion</div>
-      <input type="range" id="ptc" min="0" max=".5" step=".01" value=".15">
+      <div class="cl">px threshold <b id="ptv">0.020</b></div>
+      <div class="cd">min pixel brightness change to count as motion (0.001 step for fine control)</div>
+      <input type="range" id="ptc" min="0" max=".3" step=".001" value=".02">
     </div>
     <div class="cg">
-      <div class="cl">slope trigger <b id="stv">0.040</b></div>
+      <div class="cl">slope trigger <b id="stv">0.020</b></div>
       <div class="cd">how fast motion must arrive — filters slow diffusion</div>
-      <input type="range" id="stc" min=".005" max=".25" step=".005" value=".04">
+      <input type="range" id="stc" min=".001" max=".15" step=".001" value=".02">
     </div>
   </div>
 
@@ -101,6 +101,26 @@ input[type=range]{width:100%;accent-color:#a78bfa}
     <button class="modebtn active" id="singlebtn">single note</button>
     <button class="modebtn" id="chordbtn">chord</button>
   </div>
+
+  <!-- View mode: how the camera preview is rendered -->
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
+    <span style="font-size:9px;color:#555">preview view:</span>
+    <button class="modebtn vmbtn active" data-vm="overlay">overlay</button>
+    <button class="modebtn vmbtn" data-vm="raw">raw camera</button>
+    <button class="modebtn vmbtn" data-vm="diff">motion only</button>
+  </div>
+
+  <!-- Region of Interest crop — defines which part of the frame is the tray -->
+  <details style="margin-top:6px">
+    <summary style="font-size:10px;color:#555;cursor:pointer;padding:4px 0;user-select:none">▶ region of interest (crop to tray edges)</summary>
+    <div style="font-size:9px;color:#454a5a;margin:3px 0 5px;line-height:1.5">Crop the camera view to just the tray. Pixels outside the green box are ignored — your hand can move there without triggering notes.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+      <div class="cg"><div class="cl">top <b id="roiTv">0%</b></div><input type="range" id="roiT" min="0" max="50" step="1" value="0"></div>
+      <div class="cg"><div class="cl">bottom <b id="roiBv">100%</b></div><input type="range" id="roiB" min="50" max="100" step="1" value="100"></div>
+      <div class="cg"><div class="cl">left <b id="roiLv">0%</b></div><input type="range" id="roiL" min="0" max="50" step="1" value="0"></div>
+      <div class="cg"><div class="cl">right <b id="roiRv">100%</b></div><input type="range" id="roiR" min="50" max="100" step="1" value="100"></div>
+    </div>
+  </details>
   <div id="tmode-def">
     <b style="color:#555">single</b> — one zone fires per impact (good for individual drops).
     <b style="color:#555">chord</b> — all zones that spike simultaneously fire together (good for brush sprays across multiple zones).
@@ -339,6 +359,26 @@ input[type=range]{width:100%;accent-color:#a78bfa}
         <dd>The traditional Ebru brush made from horsehair bound to a rose thorn stem. When loaded with pigment and held over the tray, dragging or tapping deposits many small droplets rather than a single large one. In chord mode, this instrument treats simultaneous multi-zone motion as a single chord event — a brush sweep across three zones produces a three-note chord whose voicing reflects the physical gesture.</dd></div>
     </div>
 
+    <div class="ref-section">
+      <h3>physical setup guide</h3>
+      <div class="ref-term"><dt>tray surface</dt>
+        <dd>Use the darkest non-reflective surface possible. Black acrylic, matte black wood, or dark fabric stretched flat all work. Reflective surfaces (varnished wood, glass) cause false motion as ambient light shifts. Traditional Ebru trays in dark stained wood are excellent. The water itself should not reflect overhead lights — if it does, the camera will pick that up as motion.</dd></div>
+      <div class="ref-term"><dt>lighting (most important)</dt>
+        <dd>Lighting flicker is the single biggest source of false triggers. Most household LED bulbs flicker at 60Hz or 120Hz — invisible to your eye but the camera sees it. Solutions: natural daylight from a north-facing window, professional "flicker-free" LED video panels (sold for video work), or fluorescent tubes with electronic ballasts. Test by pointing the camera at the empty tray for 10 seconds and watching the noise readout — it should stay near zero. If it doesn't, your light is flickering.</dd></div>
+      <div class="ref-term"><dt>light positioning</dt>
+        <dd>Light from the side at 45°, not directly overhead. Overhead lighting creates harsh shadows when your hand moves, and reflections off the water. Side lighting illuminates the paint without bouncing back into the camera. Two soft lights from opposite sides cancel each other's shadows. Avoid any single bright point source — use diffusers (a sheet of white paper or fabric in front of the light).</dd></div>
+      <div class="ref-term"><dt>camera settings</dt>
+        <dd>Lock everything to manual: exposure, focus, white balance, ISO. Auto-exposure constantly adjusts as your hand enters/exits the frame, creating massive false motion across the entire image. On iPhone use an app like "Halide" or "Pro Camera" to lock these. On Android most camera apps have a Pro mode. After locking, leave the camera alone — even tiny movements of the camera body register as motion across every pixel.</dd></div>
+      <div class="ref-term"><dt>paint selection — detection vs aesthetics</dt>
+        <dd>The system detects luminance change, so high-contrast paints on the dark tray work best. White, pale yellow, and fluorescent colors (orange, pink, green, yellow) are easiest to detect. Traditional Ebru pigments (kalemkari) tend toward muted earth tones (sienna, ochre, indigo) which look beautiful but are harder for the camera to see. Best of both worlds: use fluorescent or white as your "trigger" pigment and traditional colors as visual accents. The triggering pigment will produce the music; the others just paint.</dd></div>
+      <div class="ref-term"><dt>UV blacklight option</dt>
+        <dd>For performances: use fluorescent UV-reactive paints under a UV blacklight in a darkened room. The paints glow vividly while the dark room reduces ambient light noise. The visual is spectacular and the camera detection is essentially perfect — fluorescent paint against near-black is the maximum-contrast scenario. Most fluorescent acrylic paints (Liquitex Fluorescent series, Golden Fluorescent) work; test with a small UV flashlight first.</dd></div>
+      <div class="ref-term"><dt>brush / hand visibility problem</dt>
+        <dd>The fundamental conflict of overhead camera setup: your hand enters between the camera and the tray, blocking the view and creating massive false motion. Three remedies, in order of effectiveness: <b>(1)</b> Use the ROI crop to exclude the side where your hand enters from. If you're right-handed and your hand comes from the right, set ROI right boundary to around 70-80% so the camera ignores that area. <b>(2)</b> Drop paint with the brush held at the edge of the ROI, then retract your hand immediately. The brief moment after impact, before paint diffuses, is when the camera reads the trigger. <b>(3)</b> Mount the camera at a slight angle (15-20° from vertical) so your hand enters less of the frame — but accept that the left-right zone mapping becomes slightly skewed.</dd></div>
+      <div class="ref-term"><dt>calibration sequence</dt>
+        <dd>Run this every session, in order: <b>(1)</b> Lock camera settings, position camera, fill tray with clear water. <b>(2)</b> Switch preview to "raw camera" mode to confirm framing — the tray should fill most of the frame. <b>(3)</b> Set the ROI box to just inside the tray edges, excluding any background. <b>(4)</b> Switch preview to "motion only" mode. With absolutely no movement, raise the px threshold until the screen is completely black. This is your noise floor. <b>(5)</b> Drop one paint droplet — a single note should fire. If multiple notes fire from one drop, raise the slope trigger. If no note fires, lower the slope trigger. <b>(6)</b> Lock these values for the session and don't touch them while performing.</dd></div>
+    </div>
+
   </div><!-- /refbody -->
 </details>
 
@@ -397,7 +437,9 @@ const pcv=document.createElement('canvas');pcv.width=PW;pcv.height=PH;
 const pct=pcv.getContext('2d',{willReadFrequently:true});
 let prevGray=null,camOn=false,camStream=null,camFlip=false;
 const zSm=[0,0,0,0,0],zPSm=[0,0,0,0,0];
-let pxThresh=0.15,slopeThr=0.04;
+let pxThresh=0.02,slopeThr=0.02;
+let viewMode='overlay';
+let roiT=0,roiB=100,roiL=0,roiR=100;
 
 // ═══════════════════════════════════════════
 //  HELPERS
@@ -648,22 +690,56 @@ function procCam(){
   const gray=new Uint8Array(PW*PH);
   for(let i=0;i<PW*PH;i++){const p=i*4;gray[i]=raw[p]*.299+raw[p+1]*.587+raw[p+2]*.114;}
   if(!prevGray){prevGray=gray;return;}
+
+  // Compute ROI bounds in pixel space
+  const x1=Math.floor(PW*roiL/100), x2=Math.floor(PW*roiR/100);
+  const y1=Math.floor(PH*roiT/100), y2=Math.floor(PH*roiB/100);
+  const roiW=Math.max(1,x2-x1), roiH=Math.max(1,y2-y1);
+  const zW=Math.floor(roiW/5);
+  const zPx=Math.max(1,zW*roiH);
+
   const thr=pxThresh*255;
-  const zW=Math.floor(PW/5),zPx=zW*PH;
   const rawZ=[0,0,0,0,0];
   const vis=new Uint8ClampedArray(PW*PH*4);
+
+  // View-mode brightness for static (non-motion) pixels
+  // raw mode: bright camera, no overlay
+  // overlay mode: dim camera with bright motion overlay
+  // diff mode: black background, only motion pixels visible
+  const staticB = viewMode==='raw'?.85 : viewMode==='diff'?0 : .45;
+  const outsideB = viewMode==='diff'?0 : .12;  // ROI exterior is always darker
+
   for(let y=0;y<PH;y++){
     for(let x=0;x<PW;x++){
-      const i=y*PW+x,p=i*4;
+      const i=y*PW+x, p=i*4;
+      const inROI = (x>=x1 && x<x2 && y>=y1 && y<y2);
+      if(!inROI){
+        const g=gray[i]*outsideB;
+        vis[p]=g; vis[p+1]=g; vis[p+2]=g; vis[p+3]=255;
+        continue;
+      }
       const diff=Math.abs(gray[i]-prevGray[i]);
-      const z=Math.min(4,Math.floor(x/zW));
+      const z=Math.min(4,Math.floor((x-x1)/zW));
       if(diff>thr){
         rawZ[z]++;
-        vis[p]=ZCR[z][0];vis[p+1]=ZCR[z][1];vis[p+2]=ZCR[z][2];vis[p+3]=200;
-      }else{const g=gray[i]*.3;vis[p]=g;vis[p+1]=g;vis[p+2]=g;vis[p+3]=255;}
+        if(viewMode==='raw'){
+          // Tint slightly with zone color but mostly show camera
+          const g=gray[i]*.7;
+          vis[p]=Math.min(255,g+ZCR[z][0]*.25);
+          vis[p+1]=Math.min(255,g+ZCR[z][1]*.25);
+          vis[p+2]=Math.min(255,g+ZCR[z][2]*.25);
+        }else{
+          vis[p]=ZCR[z][0]; vis[p+1]=ZCR[z][1]; vis[p+2]=ZCR[z][2];
+        }
+        vis[p+3]=viewMode==='diff'?255:220;
+      }else{
+        const g=gray[i]*staticB;
+        vis[p]=g; vis[p+1]=g; vis[p+2]=g; vis[p+3]=255;
+      }
     }
   }
-  // Exponential smooth + slope
+
+  // Smooth and slope
   const slopes=[];
   for(let z=0;z<5;z++){
     zPSm[z]=zSm[z];
@@ -675,7 +751,6 @@ function procCam(){
   const now=Date.now();
   if(now-lastTrig>debMs){
     if(chordMode){
-      // Chord mode: all zones above slope threshold fire simultaneously
       const hits=[];
       for(let z=0;z<5;z++){
         if(slopes[z]>slopeThr) hits.push({z,slope:slopes[z],vel:Math.min(1,Math.max(.2,zSm[z]*10))});
@@ -694,7 +769,6 @@ function procCam(){
         if(no){no.textContent='[chord] '+firedNames.join(' + ')+' ('+hits.length+' zone'+(hits.length>1?'s':'')+'  brush detected)';no.style.color='#e040fb';setTimeout(()=>no.style.color='',900);}
       }
     }else{
-      // Single mode: peak slope zone only
       let peak=-Infinity,peakZ=-1;
       for(let z=0;z<5;z++){if(slopes[z]>peak){peak=slopes[z];peakZ=z;}}
       if(peak>slopeThr&&peakZ>=0){
@@ -708,26 +782,41 @@ function procCam(){
     }
   }
   prevGray=gray;
-  // Draw preview
+
+  // Render to preview canvas
   const cview=document.getElementById('cview');
   const cct=cview.getContext('2d');
   cct.putImageData(new ImageData(vis,PW,PH),0,0);
-  cct.strokeStyle='rgba(255,255,255,0.18)';cct.lineWidth=1;
-  for(let i=1;i<5;i++){cct.beginPath();cct.moveTo(i*zW,0);cct.lineTo(i*zW,PH);cct.stroke();}
-  cct.font='9px monospace';cct.textAlign='center';
+
+  // Draw ROI rectangle (teal outline) so the user can see the active region
+  cct.strokeStyle='rgba(61,214,181,0.8)'; cct.lineWidth=1.5;
+  cct.strokeRect(x1+.5, y1+.5, roiW-1, roiH-1);
+
+  // Zone dividers inside the ROI
+  cct.strokeStyle='rgba(255,255,255,0.22)'; cct.lineWidth=1;
+  for(let i=1;i<5;i++){
+    const lx=x1+i*zW;
+    cct.beginPath(); cct.moveTo(lx,y1); cct.lineTo(lx,y2); cct.stroke();
+  }
+
+  // Zone note labels at the bottom of the ROI
+  cct.font='9px monospace'; cct.textAlign='center';
   const s=SC[curS];
   for(let z=0;z<5;z++){
-    cct.fillStyle=`rgba(${ZCR[z].join(',')},0.8)`;
-    cct.fillText(dn(s.z[z][0])+' · '+dn(s.z[z][2]),z*zW+zW/2,PH-5);
+    cct.fillStyle=`rgba(${ZCR[z].join(',')},0.9)`;
+    cct.fillText(dn(s.z[z][0])+' · '+dn(s.z[z][2]), x1+zW*z+zW/2, y2-4);
   }
-  // Zone intensity bars at top of preview
+
+  // Intensity bars at the top of the ROI
   for(let z=0;z<5;z++){
-    cct.fillStyle=`rgba(${ZCR[z].join(',')},0.55)`;
-    cct.fillRect(z*zW+1,0,zSm[z]*zW*.9,4);
+    cct.fillStyle=`rgba(${ZCR[z].join(',')},0.65)`;
+    cct.fillRect(x1+z*zW+1, y1, zSm[z]*zW*.9, 4);
   }
+
+  // Debug readout
   const baseline=(zSm[0]+zSm[1]+zSm[2]+zSm[3]+zSm[4])/5;
   const peakSlope=Math.max(...slopes);
-  document.getElementById('cdbg').textContent='noise:'+(baseline*100).toFixed(1)+'%  slope:'+peakSlope.toFixed(3);
+  document.getElementById('cdbg').textContent='noise:'+(baseline*100).toFixed(2)+'%  slope:'+peakSlope.toFixed(4);
 }
 
 // ═══════════════════════════════════════════
@@ -793,8 +882,25 @@ function gameLoop(){procCam();drawTray();requestAnimationFrame(gameLoop);}
 document.getElementById('cbtn').addEventListener('click',()=>camOn?stopCam():startCam());
 document.getElementById('cflip').addEventListener('change',function(){camFlip=this.checked;});
 document.getElementById('csel').addEventListener('change',()=>{if(camOn){stopCam();startCam();}});
-document.getElementById('ptc').addEventListener('input',function(){pxThresh=parseFloat(this.value);document.getElementById('ptv').textContent=parseFloat(this.value).toFixed(2);});
-document.getElementById('stc').addEventListener('input',function(){slopeThr=parseFloat(this.value);document.getElementById('stv').textContent=parseFloat(this.value).toFixed(3);});
+document.getElementById('ptc').addEventListener('input',function(){pxThresh=parseFloat(this.value);document.getElementById('ptv').textContent=parseFloat(this.value).toFixed(3);});
+document.getElementById('stc').addEventListener('input',function(){slopeThr=parseFloat(this.value);document.getElementById('stv').textContent=parseFloat(this.value).toFixed(4);});
+
+// View mode buttons
+document.querySelectorAll('.vmbtn').forEach(b=>b.addEventListener('click',()=>{
+  viewMode=b.dataset.vm;
+  document.querySelectorAll('.vmbtn').forEach(b2=>b2.classList.toggle('active',b2.dataset.vm===viewMode));
+}));
+
+// ROI sliders
+function updRoi(id,val,label){
+  document.getElementById(label).textContent=val+'%';
+  if(id==='roiT')roiT=val; else if(id==='roiB')roiB=val;
+  else if(id==='roiL')roiL=val; else if(id==='roiR')roiR=val;
+}
+document.getElementById('roiT').addEventListener('input',function(){updRoi('roiT',parseInt(this.value),'roiTv');});
+document.getElementById('roiB').addEventListener('input',function(){updRoi('roiB',parseInt(this.value),'roiBv');});
+document.getElementById('roiL').addEventListener('input',function(){updRoi('roiL',parseInt(this.value),'roiLv');});
+document.getElementById('roiR').addEventListener('input',function(){updRoi('roiR',parseInt(this.value),'roiRv');});
 
 document.getElementById('singlebtn').addEventListener('click',()=>{
   chordMode=false;
