@@ -16,7 +16,7 @@ canvas{display:block;width:100%}
 @media(max-width:420px){.brow-6{grid-template-columns:repeat(3,1fr)}}
 .btn{background:#0f1520;border:.5px solid #252b3a;border-radius:7px;padding:5px 3px;text-align:center;cursor:pointer;transition:border-color .15s;font-family:inherit}
 .bn{font-size:11px;font-weight:600;color:#b0b4c0;margin-bottom:1px;transition:color .15s}
-.bs{font-size:8px;color:#454a5a}
+.bs{font-size:9px;color:#7a8198;letter-spacing:.2px}
 #zones{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
 .zc{background:#0f1520;border:.5px solid #252b3a;border-radius:7px;padding:4px 5px;text-align:center}
 .zn{font-size:9px;color:#454a5a;margin-bottom:1px}
@@ -102,6 +102,14 @@ input[type=range]{width:100%;accent-color:#a78bfa}
     <span>trigger mode:</span>
     <button class="modebtn active" id="singlebtn">single note</button>
     <button class="modebtn" id="chordbtn">chord</button>
+  </div>
+
+  <!-- Preset profiles — swap many params at once for different physical inputs -->
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
+    <span style="font-size:9px;color:#555">preset:</span>
+    <button class="modebtn presetbtn active" data-pre="paint" title="Paint drops on water — short spike detection, fast retrigger. Defaults that suit Ebru.">paint drops</button>
+    <button class="modebtn presetbtn" data-pre="movement" title="Yoga / dance / slow body movement — higher slope threshold so slow motion doesn't fire chaotically, longer debounce so sustained poses produce one clear note per gesture instead of stutter.">movement / yoga</button>
+    <button class="modebtn presetbtn" data-pre="brush" title="Horsehair brush sprays — many simultaneous small triggers across zones. Auto-enables chord mode, lowers slope threshold for small spray droplets.">brush spray</button>
   </div>
 
   <!-- View mode: how the camera preview is rendered -->
@@ -384,6 +392,10 @@ input[type=range]{width:100%;accent-color:#a78bfa}
         <dd>The fundamental conflict of overhead camera setup: your hand enters between the camera and the tray, blocking the view and creating massive false motion. Three remedies, in order of effectiveness: <b>(1)</b> Use the ROI crop to exclude the side where your hand enters from. If you're right-handed and your hand comes from the right, set ROI right boundary to around 70-80% so the camera ignores that area. <b>(2)</b> Drop paint with the brush held at the edge of the ROI, then retract your hand immediately. The brief moment after impact, before paint diffuses, is when the camera reads the trigger. <b>(3)</b> Mount the camera at a slight angle (15-20° from vertical) so your hand enters less of the frame — but accept that the left-right zone mapping becomes slightly skewed.</dd></div>
       <div class="ref-term"><dt>calibration sequence</dt>
         <dd>Run this every session, in order: <b>(1)</b> Lock camera settings, position camera, fill tray with clear water. <b>(2)</b> Switch preview to "raw camera" mode to confirm framing — the tray should fill most of the frame. <b>(3)</b> Set the ROI box to just inside the tray edges, excluding any background. <b>(4)</b> Switch preview to "motion only" mode. With absolutely no movement, raise the px threshold until the screen is completely black. This is your noise floor. <b>(5)</b> Drop one paint droplet — a single note should fire. If multiple notes fire from one drop, raise the slope trigger. If no note fires, lower the slope trigger. <b>(6)</b> Lock these values for the session and don't touch them while performing.</dd></div>
+      <div class="ref-term"><dt>outdoor performance (poolside, garden, terrace)</dt>
+        <dd>Outdoor light is the hardest case. Three things break it: <b>(a)</b> The sun moves and changes intensity — even passing clouds shift exposure dramatically. <b>(b)</b> Pool water reflects light upward into anything overhead, including your tray and camera. <b>(c)</b> Wind ripples the water without you doing anything, which triggers motion. Practical rules: pick a fully shaded spot (under an umbrella or awning), not "in the shade of a tree" because dappled light through leaves moves constantly. Pick overcast days or the golden hour just before sunset when light changes slowly. Position the tray so the camera cannot see direct pool reflections in its frame — angle matters more than distance. Use a windbreak — even a low wall or a person standing on the upwind side stabilizes the water surface. Lock camera exposure manually before starting and re-lock if conditions shift. For maximum reliability outdoors, the same UV-blacklight setup works at night by the pool: black tray, fluorescent paint, UV light — and the surrounding darkness eliminates every ambient-light problem at once.</dd></div>
+      <div class="ref-term"><dt>movement mode (yoga, dance, body)</dt>
+        <dd>The "movement / yoga" preset rebalances the instrument for sustained body motion instead of paint droplets. Slope threshold rises (so slow stretches don't fire continuously), debounce extends to ~480ms (so each pose-to-pose transition produces one clear note instead of stuttering chains), and the px threshold rises slightly to ignore micro-twitches. Pairs well with the pad, theremin, glass, and crystal instruments which sustain naturally — kalimba and marimba sound too percussive for sustained body movement. The 5-zone left-low / right-high mapping becomes spatial body awareness: a side stretch literally sounds like a glide up the scale, warrior II spans the middle zones, savasana goes silent. Wide poses spanning multiple zones fire chords automatically if chord mode is on.</dd></div>
     </div>
 
   </div><!-- /refbody -->
@@ -563,34 +575,57 @@ const SY={
     osc.start(n); vib.start(n); osc.stop(n+3.7); vib.stop(n+3.7);
     return[{osc,gain:g},{osc:vib,gain:vibG}];
   },
-  // Kanun — Turkish/Ottoman trapezoidal zither with triple-strung courses.
-  // Three slightly detuned sawtooths through bandpass + lowpass simulate the
-  // characteristic shimmer of multi-string courses being plucked together.
+  // Kanun — Turkish/Ottoman trapezoidal plucked zither.
+  // Rebuilt with additive synthesis: real plucked-string sounds are dominated
+  // by their first 6-8 harmonics with steeply decreasing amplitudes and decay times.
+  // Triple-strung courses are simulated by 3 detuned voices each carrying these harmonics.
+  // A metallic pick-noise burst supplies the attack character that pure sine harmonics can't.
   kanun:(f,n,v)=>{
     const nodes=[];
-    [.998,1.0,1.002].forEach((det,i)=>{
-      const o=ac.createOscillator(),flt=ac.createBiquadFilter(),g=ac.createGain();
-      o.type='sawtooth'; o.frequency.value=f*det;
-      flt.type='lowpass'; flt.Q.value=1.4;
-      // Filter sweep: bright at pluck attack, settles to mellower body
-      flt.frequency.setValueAtTime(Math.min(f*13,9000),n);
-      flt.frequency.exponentialRampToValueAtTime(f*3.2,n+.22);
-      g.gain.setValueAtTime(.001,n);
-      g.gain.exponentialRampToValueAtTime(.18*v,n+.003);
-      g.gain.exponentialRampToValueAtTime(.001,n+1.6);
-      o.connect(flt); flt.connect(g); g.connect(mg);
-      o.start(n); o.stop(n+1.7);
-      nodes.push({osc:o,gain:g});
+    // Harmonic content of a plucked metal string: (harmonic#, relative amplitude, decay seconds)
+    // Higher harmonics are louder on metal strings than nylon - this is what makes it "bright"
+    const harmonics=[
+      {h:1,    a:1.00, d:1.7},  // fundamental
+      {h:2,    a:0.55, d:1.2},  // octave
+      {h:3.01, a:0.40, d:0.85}, // fifth (slightly stretched - real strings are inharmonic)
+      {h:4.02, a:0.30, d:0.6},
+      {h:5.04, a:0.22, d:0.45},
+      {h:6.07, a:0.14, d:0.35},
+      {h:8.12, a:0.09, d:0.22}
+    ];
+    // Three triple-strung courses with tiny detuning
+    [.9975, 1.0, 1.0025].forEach((det,strIdx)=>{
+      const stringGain=0.32; // each string contributes 1/3 of the total
+      harmonics.forEach(hp=>{
+        const o=ac.createOscillator(), g=ac.createGain();
+        o.type='sine';
+        o.frequency.value=f*det*hp.h;
+        const peak=stringGain*hp.a*v*0.18;
+        g.gain.setValueAtTime(0.0001, n);
+        g.gain.exponentialRampToValueAtTime(peak, n+0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, n+hp.d);
+        o.connect(g); g.connect(mg);
+        // Each string strikes a tiny moment later than the previous - real pick technique
+        o.start(n + strIdx*0.0008);
+        o.stop(n + hp.d + 0.05);
+        nodes.push({osc:o, gain:g});
+      });
     });
-    // Bright pluck transient — short sharp attack on the 5th harmonic
-    const click=ac.createOscillator(),clkG=ac.createGain();
-    click.type='triangle'; click.frequency.value=f*5;
-    clkG.gain.setValueAtTime(.001,n);
-    clkG.gain.exponentialRampToValueAtTime(.1*v,n+.001);
-    clkG.gain.exponentialRampToValueAtTime(.001,n+.06);
-    click.connect(clkG); clkG.connect(mg);
-    click.start(n); click.stop(n+.08);
-    nodes.push({osc:click,gain:clkG});
+    // Pick noise — a short burst of bandpass-filtered noise creates the metallic mızrap attack
+    const bufLen=Math.floor(ac.sampleRate*0.04);
+    const buf=ac.createBuffer(1, bufLen, ac.sampleRate);
+    const bd=buf.getChannelData(0);
+    for(let i=0;i<bufLen;i++) bd[i]=(Math.random()*2-1)*Math.pow(1-i/bufLen, 1.5);
+    const noiseSrc=ac.createBufferSource(); noiseSrc.buffer=buf;
+    const noiseFlt=ac.createBiquadFilter();
+    noiseFlt.type='bandpass'; noiseFlt.frequency.value=f*8; noiseFlt.Q.value=2.5;
+    const noiseG=ac.createGain();
+    noiseG.gain.setValueAtTime(0.0001, n);
+    noiseG.gain.exponentialRampToValueAtTime(0.11*v, n+0.0008);
+    noiseG.gain.exponentialRampToValueAtTime(0.0001, n+0.04);
+    noiseSrc.connect(noiseFlt); noiseFlt.connect(noiseG); noiseG.connect(mg);
+    noiseSrc.start(n); noiseSrc.stop(n+0.05);
+    nodes.push({osc:noiseSrc, gain:noiseG});
     return nodes;
   }
 };
@@ -821,13 +856,49 @@ function procCam(){
   }
   prevGray=gray;
 
-  // Render to preview canvas
+  // Render to preview canvas — each view mode renders differently
   const cview=document.getElementById('cview');
   const cct=cview.getContext('2d');
-  cct.putImageData(new ImageData(vis,PW,PH),0,0);
+
+  if(viewMode==='raw'){
+    // Draw the actual color camera feed directly
+    cct.save();
+    if(camFlip){cct.translate(PW,0); cct.scale(-1,1);}
+    cct.drawImage(vid,0,0,PW,PH);
+    cct.restore();
+    // Dim everything outside the ROI so the active region is obvious
+    cct.fillStyle='rgba(0,0,0,0.6)';
+    cct.fillRect(0,0,PW,y1);
+    cct.fillRect(0,y2,PW,PH-y2);
+    cct.fillRect(0,y1,x1,roiH);
+    cct.fillRect(x2,y1,PW-x2,roiH);
+  }else if(viewMode==='diff'){
+    // Black bg, only motion pixels visible (use processed vis data)
+    cct.putImageData(new ImageData(vis,PW,PH),0,0);
+  }else{
+    // Overlay: color camera (dimmed) + motion overlay on top
+    cct.save();
+    if(camFlip){cct.translate(PW,0); cct.scale(-1,1);}
+    cct.drawImage(vid,0,0,PW,PH);
+    cct.restore();
+    cct.fillStyle='rgba(0,0,0,0.55)';
+    cct.fillRect(0,0,PW,PH);
+    // Only the motion pixels from vis, with alpha < 255 letting camera show through
+    const overlay=new Uint8ClampedArray(PW*PH*4);
+    for(let i=0;i<PW*PH;i++){
+      const p=i*4;
+      // Identify motion pixels: in overlay mode the static pixels are grayscale,
+      // motion pixels carry zone colors. Test by checking if R/G/B differ significantly.
+      const r=vis[p],g=vis[p+1],b=vis[p+2];
+      const isMotion = Math.abs(r-g)>15 || Math.abs(g-b)>15 || Math.abs(r-b)>15;
+      if(isMotion){overlay[p]=r;overlay[p+1]=g;overlay[p+2]=b;overlay[p+3]=200;}
+      else{overlay[p+3]=0;}
+    }
+    cct.putImageData(new ImageData(overlay,PW,PH),0,0);
+  }
 
   // Draw ROI rectangle (teal outline) so the user can see the active region
-  cct.strokeStyle='rgba(61,214,181,0.8)'; cct.lineWidth=1.5;
+  cct.strokeStyle='rgba(61,214,181,0.85)'; cct.lineWidth=1.5;
   cct.strokeRect(x1+.5, y1+.5, roiW-1, roiH-1);
 
   // Zone dividers inside the ROI
@@ -927,6 +998,27 @@ document.getElementById('stc').addEventListener('input',function(){slopeThr=pars
 document.querySelectorAll('.vmbtn').forEach(b=>b.addEventListener('click',()=>{
   viewMode=b.dataset.vm;
   document.querySelectorAll('.vmbtn').forEach(b2=>b2.classList.toggle('active',b2.dataset.vm===viewMode));
+}));
+
+// Preset profiles: snap all the relevant params to values that suit a specific physical input.
+// This way the user doesn't have to remember 6 different slider positions for paint vs yoga.
+const PRESETS={
+  paint:   {px:.020, slope:.020, deb:180, chord:false},
+  movement:{px:.030, slope:.055, deb:480, chord:false},
+  brush:   {px:.015, slope:.012, deb:140, chord:true }
+};
+function applyPreset(name){
+  const p=PRESETS[name]; if(!p) return;
+  pxThresh=p.px; slopeThr=p.slope; debMs=p.deb; chordMode=p.chord;
+  document.getElementById('ptc').value=p.px;  document.getElementById('ptv').textContent=p.px.toFixed(3);
+  document.getElementById('stc').value=p.slope; document.getElementById('stv').textContent=p.slope.toFixed(4);
+  document.getElementById('dbc').value=p.deb;   document.getElementById('dbv').textContent=p.deb+'ms';
+  document.getElementById('singlebtn').classList.toggle('active', !p.chord);
+  document.getElementById('chordbtn').classList.toggle('active', p.chord);
+}
+document.querySelectorAll('.presetbtn').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.presetbtn').forEach(b2=>b2.classList.toggle('active',b2===b));
+  applyPreset(b.dataset.pre);
 }));
 
 // ROI sliders
