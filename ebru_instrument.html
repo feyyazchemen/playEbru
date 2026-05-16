@@ -12,6 +12,8 @@ canvas{display:block;width:100%}
 .rl{font-size:9px;color:#555;margin:9px 0 3px;display:flex;align-items:center;gap:5px}
 .rl span{opacity:.35;font-size:8px}
 .brow{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:2px}
+.brow-6{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;margin-bottom:2px}
+@media(max-width:420px){.brow-6{grid-template-columns:repeat(3,1fr)}}
 .btn{background:#0f1520;border:.5px solid #252b3a;border-radius:7px;padding:5px 3px;text-align:center;cursor:pointer;transition:border-color .15s;font-family:inherit}
 .bn{font-size:11px;font-weight:600;color:#b0b4c0;margin-bottom:1px;transition:color .15s}
 .bs{font-size:8px;color:#454a5a}
@@ -129,7 +131,7 @@ input[type=range]{width:100%;accent-color:#a78bfa}
 
 <!-- ══ INSTRUMENTS ══ -->
 <div class="rl">acoustic instruments</div>
-<div class="brow" id="ac-i">
+<div class="brow-6" id="ac-i">
   <button class="btn" data-k="kalimba" style="border-color:#3dd6b5"
     title="African thumb piano — metal tines of varying lengths, struck downward with the thumbs. Short decay. Warm, forgiving polyphony — overlapping notes blend naturally.">
     <div class="bn" style="color:#3dd6b5">kalimba</div><div class="bs">warm tines</div></button>
@@ -145,6 +147,9 @@ input[type=range]{width:100%;accent-color:#a78bfa}
   <button class="btn" data-k="oud"
     title="Middle Eastern lute — sawtooth wave (rich in harmonics) run through a filter that sweeps from bright to dark in 220ms, simulating the pluck. A quiet sub-octave drone adds the sympathetic string resonance of a real oud.">
     <div class="bn">oud</div><div class="bs">plucked</div></button>
+  <button class="btn" data-k="kanun"
+    title="Turkish/Ottoman trapezoidal plucked zither. 26 courses of triple-strung strings give it a shimmering, choir-like quality. Played with metal picks attached to the index fingers. Three slightly detuned sawtooths through filter sweeps simulate the triple-string courses; the natural micro-detuning between strings creates the kanun's characteristic warmth.">
+    <div class="bn">kanun</div><div class="bs">triple strung</div></button>
 </div>
 <div class="rl">synth instruments <span>· psychedelic rainbow mode activates automatically</span></div>
 <div class="brow" id="sy-i">
@@ -355,6 +360,8 @@ input[type=range]{width:100%;accent-color:#a78bfa}
         <dd>The characteristic 2nd degree in Uşşak makam — approximately 150 cents above the root A, between the Western Bb (233 Hz) and B (247 Hz). Synthesised here at 239.9 Hz. Its microtonal lowness gives Uşşak its distinctively melancholic, yearning character that differs from both the Western natural minor and Phrygian modes.</dd></div>
       <div class="ref-term"><dt>Nim Zirgüle (نيم زيرگوله)</dt>
         <dd>A "half zirgüle" — the characteristic 4th degree in Saba makam, approximately a diminished 4th above the root D. Synthesised here at 366.5 Hz (slightly below F# = 369.99 Hz). "Nim" means "half" in Persian — this is a slightly flattened version of the full Zirgüle. The tension of this near-tritone interval defines Saba's sorrowful quality.</dd></div>
+      <div class="ref-term"><dt>kanun (قانون)</dt>
+        <dd>Trapezoidal plucked zither central to Ottoman and Arabic classical music. 26 courses of three strings each (78 strings total), played with metal picks (mızraplar) clipped onto the index fingers. Equipped with small levers (mandallar) near the bridge that adjust pitch in koma increments, enabling fluent makam performance. The triple-strung courses produce a distinctive shimmering, choir-like quality — the three strings are very slightly out of tune with each other, creating natural beating and depth. The name comes from the Greek kanón ("rule, law").</dd></div>
       <div class="ref-term"><dt>at fırçası (horsehair brush)</dt>
         <dd>The traditional Ebru brush made from horsehair bound to a rose thorn stem. When loaded with pigment and held over the tray, dragging or tapping deposits many small droplets rather than a single large one. In chord mode, this instrument treats simultaneous multi-zone motion as a single chord event — a brush sweep across three zones produces a three-note chord whose voicing reflects the physical gesture.</dd></div>
     </div>
@@ -414,7 +421,8 @@ const ZCR=[[79,195,247],[129,199,132],[255,241,118],[255,183,77],[240,98,146]];
 const SOL={C:'Do',D:'Re',E:'Mi',F:'Fa',G:'Sol',A:'La',B:'Si'};
 const IM={
   kalimba:{c:'#3dd6b5',d:2200,s:false},handpan:{c:'#ffb74d',d:3700,s:false},
-  marimba:{c:'#81c784',d:1600,s:false},crystal:{c:'#ce93d8',d:4700,s:false},oud:{c:'#ff8a65',d:2000,s:false},
+  marimba:{c:'#81c784',d:1600,s:false},crystal:{c:'#ce93d8',d:4700,s:false},
+  oud:{c:'#ff8a65',d:2000,s:false},kanun:{c:'#d4a843',d:1800,s:false},
   fm:{c:'#e040fb',d:3600,s:true},glass:{c:'#40e0d0',d:4300,s:true},
   pad:{c:'#a78bfa',d:4300,s:true},sitar:{c:'#ffd740',d:2100,s:true},theremin:{c:'#b2ff59',d:3700,s:true}
 };
@@ -554,6 +562,36 @@ const SY={
     vib.connect(vibG); vibG.connect(osc.frequency); osc.connect(g); g.connect(mg);
     osc.start(n); vib.start(n); osc.stop(n+3.7); vib.stop(n+3.7);
     return[{osc,gain:g},{osc:vib,gain:vibG}];
+  },
+  // Kanun — Turkish/Ottoman trapezoidal zither with triple-strung courses.
+  // Three slightly detuned sawtooths through bandpass + lowpass simulate the
+  // characteristic shimmer of multi-string courses being plucked together.
+  kanun:(f,n,v)=>{
+    const nodes=[];
+    [.998,1.0,1.002].forEach((det,i)=>{
+      const o=ac.createOscillator(),flt=ac.createBiquadFilter(),g=ac.createGain();
+      o.type='sawtooth'; o.frequency.value=f*det;
+      flt.type='lowpass'; flt.Q.value=1.4;
+      // Filter sweep: bright at pluck attack, settles to mellower body
+      flt.frequency.setValueAtTime(Math.min(f*13,9000),n);
+      flt.frequency.exponentialRampToValueAtTime(f*3.2,n+.22);
+      g.gain.setValueAtTime(.001,n);
+      g.gain.exponentialRampToValueAtTime(.18*v,n+.003);
+      g.gain.exponentialRampToValueAtTime(.001,n+1.6);
+      o.connect(flt); flt.connect(g); g.connect(mg);
+      o.start(n); o.stop(n+1.7);
+      nodes.push({osc:o,gain:g});
+    });
+    // Bright pluck transient — short sharp attack on the 5th harmonic
+    const click=ac.createOscillator(),clkG=ac.createGain();
+    click.type='triangle'; click.frequency.value=f*5;
+    clkG.gain.setValueAtTime(.001,n);
+    clkG.gain.exponentialRampToValueAtTime(.1*v,n+.001);
+    clkG.gain.exponentialRampToValueAtTime(.001,n+.06);
+    click.connect(clkG); clkG.connect(mg);
+    click.start(n); click.stop(n+.08);
+    nodes.push({osc:click,gain:clkG});
+    return nodes;
   }
 };
 function stopV(v){
